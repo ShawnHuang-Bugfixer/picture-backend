@@ -11,7 +11,6 @@ import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.*;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.UserRoleEnum;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
 import com.xin.picturebackend.service.UserService;

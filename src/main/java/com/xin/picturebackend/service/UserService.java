@@ -41,4 +41,6 @@ public interface UserService extends IService<User> {
     boolean userLogout(HttpServletRequest request);
 
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    boolean isAdmin(User user);
 }
