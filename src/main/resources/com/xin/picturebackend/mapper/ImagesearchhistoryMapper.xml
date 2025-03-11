@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xin.picturebackend.mapper.ImagesearchhistoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.xin.picturebackend.model.entity.Imagesearchhistory">
+            <id property="id" column="id" />
+            <result property="searchKeyword" column="searchKeyword" />
+            <result property="first" column="first" />
+            <result property="count" column="count" />
+            <result property="version" column="version" />
+            <result property="createdAt" column="createdAt" />
+            <result property="updatedAt" column="updatedAt" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,searchKeyword,first,count,version,createdAt,
+        updatedAt
+    </sql>
+</mapper>

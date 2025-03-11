@@ -117,6 +117,11 @@ public class Picture implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    /**
+     * 感知哈希值
+     */
+    private String pHash;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

@@ -54,6 +54,27 @@ ALTER TABLE picture
     ADD COLUMN reviewerId    BIGINT        NULL COMMENT '审核人 ID',
     ADD COLUMN reviewTime    DATETIME      NULL COMMENT '审核时间';
 
--- 创建基于 reviewStatus 列的索引
+-- 修改图片表，增加感知哈希值字段和索引
+ALTER TABLE picture
+    ADD COLUMN pHash VARCHAR(64) DEFAULT NULL COMMENT '感知哈希值',
+    ADD INDEX idx_pHash (pHash);
+
+-- 创建基于 reviewStatus 列的索引（审核状态）
 CREATE INDEX idx_reviewStatus ON picture (reviewStatus);
+
+-- 创建管理员批量拉取图片信息历史记录
+CREATE TABLE IF NOT EXISTS imageSearchHistory
+(
+    id            bigint auto_increment comment 'id' primary key,
+    searchKeyword VARCHAR(255) NOT NULL COMMENT '搜索关键词',
+    first         INT          NOT NULL COMMENT '分页参数 first',
+    count         INT          NOT NULL COMMENT '分页参数 count',
+    version       INT          NOT NULL DEFAULT 1 COMMENT '乐观锁版本号（初始值为1，每次更新+1）',
+    createdAt     TIMESTAMP             DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updatedAt     TIMESTAMP             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY idx_unique_keyword (searchKeyword)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4;
+
+
 

@@ -5,7 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * TODO
+ * 单张图片上传请求
  *
  * @author 黄兴鑫
  * @since 2025/2/27 18:36
@@ -22,6 +22,11 @@ public class PictureUploadRequest implements Serializable {
      * 文件地址
      */
     private String fileUrl;
+
+    /**
+     * 图片名称
+     */
+    private String picName;
 
     private static final long serialVersionUID = 1L;
 }

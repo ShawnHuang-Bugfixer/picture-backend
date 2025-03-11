@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.model.dto.file.UploadPictureResult;
 import com.xin.picturebackend.model.dto.picture.PictureQueryRequest;
 import com.xin.picturebackend.model.dto.picture.PictureReviewRequest;
+import com.xin.picturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.xin.picturebackend.model.dto.picture.PictureUploadRequest;
 import com.xin.picturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -40,4 +41,6 @@ public interface PictureService extends IService<Picture> {
     void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
 
     void fillPicture(Picture picture, User loginUser);
+
+    int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 }

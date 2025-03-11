@@ -1,6 +1,7 @@
 package com.xin.picturebackend.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -9,26 +10,38 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
-import com.xin.picturebackend.manager.FileManager;
 import com.xin.picturebackend.manager.upload.FilePictureUpload;
 import com.xin.picturebackend.manager.upload.URLPictureUpload;
+import com.xin.picturebackend.mapper.ImagesearchhistoryMapper;
 import com.xin.picturebackend.model.dto.file.UploadPictureResult;
 import com.xin.picturebackend.model.dto.picture.PictureQueryRequest;
 import com.xin.picturebackend.model.dto.picture.PictureReviewRequest;
+import com.xin.picturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.xin.picturebackend.model.dto.picture.PictureUploadRequest;
+import com.xin.picturebackend.model.entity.Imagesearchhistory;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.model.vo.UserVO;
+import com.xin.picturebackend.service.ImagesearchhistoryService;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.mapper.PictureMapper;
 import com.xin.picturebackend.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.io.IOException;
+import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +54,7 @@ import java.util.stream.Collectors;
  * @createDate 2025-02-27 16:22:08
  */
 @Service
+@Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
     @Resource
@@ -52,22 +66,33 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private UserService userService;
 
+    @Resource
+    private ImagesearchhistoryMapper historyMapper;
+
+    @Resource
+    private ImagesearchhistoryService historyService;
+
+    @Resource
+    private ApplicationContext applicationContext;
+
     /**
-     * 上传图片同时在数据库中生成图片记录
-     * <p>
+     * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
+     * 未携带图片 id 时，直接上传图片到 COS 中，并且填充其他信息后保存到数据库。携带 id 时，重新上传到 COS 中，修改数据库中指定 id 的 picture 的对象存储地址 url。
      * fixme : 携带 id 时，只修改了数据库中指定 id 的 picture 的对象存储地址 url，并未删除原有的图片。
      *
-     * @param pictureUploadRequest 携带图片id
+     * @param pictureUploadRequest 携带图片 id, 文件 url, 文件名
      * @param user                 用户信息
-     * @return 返回 PictureVO 视图对象
+     * @return 返回 PictureVO 视图对象，包含图片 id
      */
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
         // 1. 参数校验
         ThrowUtils.throwIf(user == null, ErrorCode.NO_AUTH_ERROR);
         Long pictureId = null;
+        String picName = null;
         if (pictureUploadRequest != null) {
             pictureId = pictureUploadRequest.getId();
+            picName = pictureUploadRequest.getPicName();
         }
         // 2. 判断是否为重新上传，即判断图片是否存在
         if (pictureId != null) {
@@ -89,8 +114,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             String resourceUrl = (String) resourceSource;
             uploadPictureResult = urlPictureUploader.uploadPicture(resourceUrl, uploadPrefix);
         }
-        ThrowUtils.throwIf(uploadPictureResult == null, ErrorCode.OPERATION_ERROR, "图片上传失败");
-        Picture picture = getPicture(user, uploadPictureResult, pictureId);
+        Picture picture = getPicture(picName, user, uploadPictureResult, pictureId);
         // 重置审核状态
         fillPicture(picture, user);
         // 4. 保存到数据库
@@ -271,10 +295,122 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    private static Picture getPicture(User user, UploadPictureResult uploadPictureResult, Long pictureId) {
+    /**
+     * 批量从 bing 拉取指定关键词 keyword 的图片，返回成功上传 COS 的数量。
+     * fixme 拉取速度缓慢，需要优化。
+     *
+     * @param pictureUploadByBatchRequest 包含 关键词和最大抓取数量
+     * @param loginUser                   登录用户
+     * @return 返回 上传数量
+     */
+    @Override
+    public int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        // 1. 参数校验
+        Integer paraCount = pictureUploadByBatchRequest.getCount(); // 最大拉取数量
+        String searchText = pictureUploadByBatchRequest.getSearchText(); // 图片关键词
+        ThrowUtils.throwIf(paraCount == null || StrUtil.isBlank(searchText), ErrorCode.PARAMS_ERROR, "参数错误");
+        int successUploadCount = 0;
+        int first = applicationContext.getBean(PictureServiceImpl.class).getScrollingPage(searchText); //拿到动态代理对象后才能激活 @Transactional
+        // 3. 利用 first 和 count 构造 url，从 bing 搜索引擎中获取图片 url 集合
+        String fetchURL = String.format("https://cn.bing.com/images/async?q=%s&first=%s&count=%s&mmasync=1", searchText, first, "35");
+        Document document = null;
+        try {
+            document = Jsoup.connect(fetchURL).get(); // fixme 测试网络连接超时
+            Element div = document.getElementsByClass("dgControl").first();
+            ThrowUtils.throwIf(ObjUtil.isNull(div), ErrorCode.OPERATION_ERROR, "jsoup 获取元素失败");
+            Elements imgElementList = div.select("img.mimg");
+            // 4. 遍历集合，上传到 COS 对象存储和数据库，记录成功上传的数量
+            for (Element imgElement : imgElementList) {
+                String url = imgElement.attr("src");
+                if (StrUtil.isBlank(url)) {
+                    log.info("当前元素 URL 为空 URL = {}", url);
+                    continue;
+                }
+                // url 处理
+                int questionMarkIndex = url.indexOf("?");
+                url = questionMarkIndex > -1 ? url.substring(0, questionMarkIndex) : url;
+                // 上传图片,批量上传时默认名称前缀为关键字
+                String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+                if (StrUtil.isBlank(namePrefix)) {
+                    namePrefix = searchText;
+                }
+                PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+                String uuid = UUID.randomUUID().toString().replace("-", "");
+                pictureUploadRequest.setPicName(namePrefix + uuid.substring(0, 8));
+                PictureVO pictureVO = null;
+                try {
+                    pictureVO = uploadPicture(url, pictureUploadRequest, loginUser);
+                } catch (BusinessException e) {
+                    log.info("图片上传失败, url = {}, 原因 = {}", url, e.getMessage());
+                }
+                if (pictureVO != null) successUploadCount++;
+                if (successUploadCount >= paraCount) {
+                    break;
+                }
+                Thread.sleep(500);
+            }
+        } catch (Exception e) {
+            log.error("网络错误，请稍后重试", e);
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "网络错误，请稍后重试");
+        }
+        return successUploadCount;
+    }
+
+    /**
+     * 查询批量拉取历史表，返回指定关键词滑动分页的起始页码。
+     * 利用 keyword，查询数据库，如果不存在，first = 1 count = 35。
+     * 如果存在，从数据库中获取 first 和 count first += count。将结果写回数据库
+     *
+     * @param keyword 批量拉取图片的关键词
+     * @return 返回 keyword 对应的滑动分页起始页码
+     */
+    @Transactional
+    public int getScrollingPage(String keyword) {
+        int first = 1;
+        int count = 35;
+        int maxRetries = 3;
+        int retryCount = 0;
+        while (retryCount < maxRetries) {
+            QueryWrapper<Imagesearchhistory> historyQueryWrapper = new QueryWrapper<>();
+            historyQueryWrapper.eq("searchKeyword", keyword);
+            Imagesearchhistory selectedOne = historyMapper.selectOne(historyQueryWrapper);
+            if (selectedOne != null) {
+                count = selectedOne.getCount();
+                first = selectedOne.getFirst() + count;
+            }
+            selectedOne = ObjUtil.isNull(selectedOne) ? new Imagesearchhistory() : selectedOne;
+            selectedOne.setCount(count);
+            selectedOne.setFirst(first);
+            selectedOne.setUpdatedAt(new Date());
+            selectedOne.setSearchKeyword(keyword);
+            boolean success = historyService.saveOrUpdate(selectedOne);
+            if (!success) {
+                retryCount++;
+                continue;
+            } else {
+                return first;
+            }
+        }
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取滑动分页页码失败");
+    }
+
+    /**
+     * 将数据万象返回的图片信息封装成 Picture 对象
+     *
+     * @param picName             批量抓取时，管理员设置的别名
+     * @param user                当前登录用户
+     * @param uploadPictureResult 数据万象返回的图片信息
+     * @param pictureId           图片id
+     * @return 返回 Picture 对象
+     */
+    private static Picture getPicture(String picName, User user, UploadPictureResult uploadPictureResult, Long pictureId) {
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());
-        picture.setName(uploadPictureResult.getPicName());
+        if (StrUtil.isNotBlank(picName)) {
+            picture.setName(picName);
+        } else {
+            picture.setName(uploadPictureResult.getPicName());
+        }
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
         picture.setPicHeight(uploadPictureResult.getPicHeight());
