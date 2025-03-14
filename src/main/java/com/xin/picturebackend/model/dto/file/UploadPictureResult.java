@@ -3,7 +3,7 @@ package com.xin.picturebackend.model.dto.file;
 import lombok.Data;
 
 /**
- * TODO 接收图片解析信息
+ * 接收图片解析信息
  *
  * @author 黄兴鑫
  * @since 2025/2/27 16:28

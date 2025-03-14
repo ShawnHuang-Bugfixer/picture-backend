@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 
 /**
- * TODO 管理员查询用户信息模型
+ * 管理员查询用户信息模型
  *
  * @author 黄兴鑫
  * @since 2025/2/26 15:17

@@ -36,7 +36,6 @@ public class URLPictureUpload extends PictureUploadTemplate<String>{
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "资源地址格式错误！");
         }
         // 2. 校验资源类型
-        // fixme 这里导致抓取缓慢
         try (HttpResponse response = HttpUtil.createRequest(Method.HEAD, resourceSource)
                 .setConnectionTimeout(1000)  // 连接超时 1 秒
                 .setReadTimeout(1000)         // 读取超时 1 秒

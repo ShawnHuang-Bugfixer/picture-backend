@@ -5,7 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * TODO 更新用户信息模型
+ * 更新用户信息模型
  *
  * @author 黄兴鑫
  * @since 2025/2/26 15:16

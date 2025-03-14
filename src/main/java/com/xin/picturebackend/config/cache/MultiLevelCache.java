@@ -4,7 +4,6 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.data.redis.cache.RedisCache;
 
-import javax.annotation.Resource;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 
@@ -15,13 +14,13 @@ public class MultiLevelCache implements Cache {
     private final String name;
     private final CaffeineCache caffeineCache;
     private final RedisCache redisCache;
-    @Resource
-    private Executor asyncExecutor;
+    private final Executor asyncExecutor;
 
-    public MultiLevelCache(String cacheName, CaffeineCache caffeineCache, RedisCache redisCache) {
+    public MultiLevelCache(String cacheName, CaffeineCache caffeineCache, RedisCache redisCache, Executor asyncExecutor) {
         this.name = cacheName;
         this.caffeineCache = caffeineCache;
         this.redisCache = redisCache;
+        this.asyncExecutor = asyncExecutor;
     }
 
     /**
@@ -39,12 +38,10 @@ public class MultiLevelCache implements Cache {
         }
 
         // 2. 查询Redis
-        Object redisValue = redisCache.get(key);
+        ValueWrapper redisValue = redisCache.get(key);
         if (redisValue != null) {
-            // 异步回填Caffeine
-            asyncExecutor.execute(() ->
-                    caffeineCache.put(key, redisValue));
-            return () -> redisValue;
+            // fixme 只查询数据，caffeine 存放的热点数据单独控制
+            return redisValue;
         }
         return null;
     }

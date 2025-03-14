@@ -21,7 +21,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * TODO 验证 SDK 操作对象存储
+ * 验证 SDK 操作对象存储
  *
  * @author 黄兴鑫
  * @since 2025/2/27 15:30

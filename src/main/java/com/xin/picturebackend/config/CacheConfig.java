@@ -56,8 +56,9 @@ public class CacheConfig {
 
     @Bean("multiLevelCacheManger")
     public CacheManager multiLevelCacheManger(@Qualifier("caffeineCacheManager") CacheManager caffeineCacheManager,
-                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager) {
-        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager);
+                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager,
+                                              @Qualifier("asyncExecutor") Executor asyncExecutor) {
+        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager, asyncExecutor);
     }
 
     @Bean

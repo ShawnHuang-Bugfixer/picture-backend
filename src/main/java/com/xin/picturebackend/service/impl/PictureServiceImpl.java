@@ -315,7 +315,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         String fetchURL = String.format("https://cn.bing.com/images/async?q=%s&first=%s&count=%s&mmasync=1", searchText, first, "35");
         Document document = null;
         try {
-            document = Jsoup.connect(fetchURL).get(); // fixme 测试网络连接超时
+            document = Jsoup.connect(fetchURL).get();
             Element div = document.getElementsByClass("dgControl").first();
             ThrowUtils.throwIf(ObjUtil.isNull(div), ErrorCode.OPERATION_ERROR, "jsoup 获取元素失败");
             Elements imgElementList = div.select("img.mimg");
