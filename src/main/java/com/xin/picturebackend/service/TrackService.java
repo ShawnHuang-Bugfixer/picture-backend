@@ -1,0 +1,19 @@
+package com.xin.picturebackend.service;
+
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+
+/**
+ *
+ * @author 黄兴鑫
+ * @since 2025/3/13 17:35
+ */
+@Service
+public class TrackService {
+    @Cacheable(cacheManager = "multiLevelCacheManger", value = {"hotkey"}, key = "'picture:vo:' + #id")
+    public String getTrack(int id) {
+        // 实际业务逻辑（例如数据库查询）
+        return "Track Data " + id;
+    }
+}
