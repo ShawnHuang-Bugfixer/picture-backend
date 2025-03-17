@@ -1,6 +1,7 @@
 package com.xin.picturebackend.config.cache;
 
 import lombok.NonNull;
+import org.redisson.api.RedissonClient;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -22,12 +23,14 @@ import java.util.concurrent.ConcurrentMap;
 public class MultiLevelCacheManager implements CacheManager {
     private final CaffeineCacheManager caffeineCacheManager;
     private final RedisCacheManager redisCacheManager;
+    private final RedissonClient redissonClient;
     private final ConcurrentMap<String, MultiLevelCache> caches = new ConcurrentHashMap<>();
 
     public MultiLevelCacheManager(CaffeineCacheManager caffeineCacheManager,
-                                  RedisCacheManager redisCacheManager) {
+                                  RedisCacheManager redisCacheManager, RedissonClient redissonClient) {
         this.caffeineCacheManager = caffeineCacheManager;
         this.redisCacheManager = redisCacheManager;
+        this.redissonClient = redissonClient;
     }
 
     @Override
@@ -36,7 +39,8 @@ public class MultiLevelCacheManager implements CacheManager {
                 new MultiLevelCache(
                         cacheName,
                         (CaffeineCache) caffeineCacheManager.getCache(cacheName),
-                        (RedisCache) redisCacheManager.getCache(cacheName)
+                        (RedisCache) redisCacheManager.getCache(cacheName),
+                        redissonClient
                 )
         );
     }

@@ -434,7 +434,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      * @return 返回去敏后数据 pictureVO
      */
     @Override
-    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id") // fixme sync 是否需要开启？
+    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id", sync = true)
     public PictureVO getPictureVOById(long id) {
         log.error("缓存失效！");
         if (!pictureBloomFilter.contains(String.valueOf(id))) {

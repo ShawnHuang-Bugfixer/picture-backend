@@ -1,6 +1,7 @@
 package com.xin.picturebackend.config.cache;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -52,8 +53,8 @@ public class CacheConfig {
 
     @Bean("multiLevelCacheManger")
     public CacheManager multiLevelCacheManger(@Qualifier("caffeineCacheManager") CacheManager caffeineCacheManager,
-                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager
-                                              ) {
-        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager);
+                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager,
+                                              RedissonClient redissonClient) {
+        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager, redissonClient);
     }
 }
