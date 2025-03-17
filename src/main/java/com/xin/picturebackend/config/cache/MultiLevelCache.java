@@ -14,13 +14,11 @@ public class MultiLevelCache implements Cache {
     private final String name;
     private final CaffeineCache caffeineCache;
     private final RedisCache redisCache;
-    private final Executor asyncExecutor;
 
-    public MultiLevelCache(String cacheName, CaffeineCache caffeineCache, RedisCache redisCache, Executor asyncExecutor) {
+    public MultiLevelCache(String cacheName, CaffeineCache caffeineCache, RedisCache redisCache) {
         this.name = cacheName;
         this.caffeineCache = caffeineCache;
         this.redisCache = redisCache;
-        this.asyncExecutor = asyncExecutor;
     }
 
     /**
@@ -80,7 +78,7 @@ public class MultiLevelCache implements Cache {
         ValueWrapper wrapper = redisCache.get(key);
         if (wrapper != null && type.isInstance(wrapper.get())) {
             T redisValue = type.cast(wrapper.get());
-            asyncExecutor.execute(() -> caffeineCache.put(key, redisValue)); // 异步回填
+//            asyncExecutor.execute(() -> caffeineCache.put(key, redisValue)); // 异步回填
             return redisValue;
         }
         return null;

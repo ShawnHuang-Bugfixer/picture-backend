@@ -1,8 +1,6 @@
-package com.xin.picturebackend.config;
+package com.xin.picturebackend.config.cache;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.xin.picturebackend.config.cache.MultiLevelCacheManager;
-import com.xin.picturebackend.config.cache.RedisCacheTypeEnum;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -13,8 +11,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
@@ -56,13 +52,8 @@ public class CacheConfig {
 
     @Bean("multiLevelCacheManger")
     public CacheManager multiLevelCacheManger(@Qualifier("caffeineCacheManager") CacheManager caffeineCacheManager,
-                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager,
-                                              @Qualifier("asyncExecutor") Executor asyncExecutor) {
-        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager, asyncExecutor);
-    }
-
-    @Bean
-    public Executor asyncExecutor() {
-        return Executors.newFixedThreadPool(4);
+                                              @Qualifier("redisCacheManager") CacheManager redisCacheManager
+                                              ) {
+        return new MultiLevelCacheManager((CaffeineCacheManager) caffeineCacheManager, (RedisCacheManager) redisCacheManager);
     }
 }

@@ -33,15 +33,17 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+//import org.redisson.api.RBloomFilter;
+import org.redisson.api.RBloomFilter;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.support.NullValue;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
-import java.io.IOException;
-import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +76,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private ApplicationContext applicationContext;
+
+    @Resource
+    private RBloomFilter<String> pictureBloomFilter;
 
     /**
      * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
@@ -422,6 +427,28 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setEditTime(new Date());
         }
         return picture;
+    }
+
+    /**
+     * todo 重写 pictureVO 查询，调用查询 hotkey 的多级缓存逻辑。
+     *      跟踪单线程数据请求流程
+     *      跟踪多并发数据写入 caffeine
+     *      连接点存在多个增强执行先后顺序？
+     *
+     * @param id picture id
+     * @return 返回去敏后数据 pictureVO
+     */
+    @Override
+    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id")
+    public PictureVO getPictureVOById(long id) {
+        if (!pictureBloomFilter.contains(String.valueOf(id))) {
+            return null;
+        }
+        Picture picture = this.getById(id);
+        if (picture == null) {
+            return null;
+        }
+        return getPictureVO(picture);
     }
 }
 

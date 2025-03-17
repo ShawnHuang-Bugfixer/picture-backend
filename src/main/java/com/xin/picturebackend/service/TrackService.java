@@ -5,15 +5,17 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 /**
+ * 测试基于 spring cache 搭建的 caffeine，redis 的多级缓存
  *
  * @author 黄兴鑫
  * @since 2025/3/13 17:35
  */
+@Deprecated
 @Service
 public class TrackService {
     @Cacheable(cacheManager = "multiLevelCacheManger", value = {"hotkey"}, key = "'picture:vo:' + #id")
     public String getTrack(int id) {
         // 实际业务逻辑（例如数据库查询）
-        return "Track Data " + id;
+        return null;
     }
 }

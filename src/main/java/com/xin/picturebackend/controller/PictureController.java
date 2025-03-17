@@ -29,7 +29,6 @@ import java.util.Date;
 import java.util.List;
 
 /**
- *
  * @author 黄兴鑫
  * @since 2025/2/27 19:40
  */
@@ -155,11 +154,9 @@ public class PictureController {
     @GetMapping("/get/vo")
     public BaseResponse<PictureVO> getPictureVOById(long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        // 查询数据库
-        Picture picture = pictureService.getById(id);
-        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
+        PictureVO pictureVO = pictureService.getPictureVOById(id);
         // 获取封装类
-        return ResultUtils.success(pictureService.getPictureVO(picture));
+        return ResultUtils.success(pictureVO);
     }
 
     /**

@@ -24,13 +24,11 @@ public class MultiLevelCacheManager implements CacheManager {
     private final CaffeineCacheManager caffeineCacheManager;
     private final RedisCacheManager redisCacheManager;
     private final ConcurrentMap<String, MultiLevelCache> caches = new ConcurrentHashMap<>();
-    private final Executor asyncExecutor;
 
     public MultiLevelCacheManager(CaffeineCacheManager caffeineCacheManager,
-                                  RedisCacheManager redisCacheManager, Executor asyncExecutor) {
+                                  RedisCacheManager redisCacheManager) {
         this.caffeineCacheManager = caffeineCacheManager;
         this.redisCacheManager = redisCacheManager;
-        this.asyncExecutor = asyncExecutor;
     }
 
     @Override
@@ -39,8 +37,7 @@ public class MultiLevelCacheManager implements CacheManager {
                 new MultiLevelCache(
                         cacheName,
                         (CaffeineCache) caffeineCacheManager.getCache(cacheName),
-                        (RedisCache) redisCacheManager.getCache(cacheName),
-                        asyncExecutor
+                        (RedisCache) redisCacheManager.getCache(cacheName)
                 )
         );
     }
