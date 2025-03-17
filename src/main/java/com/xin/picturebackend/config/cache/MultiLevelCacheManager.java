@@ -11,7 +11,6 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
 
 /**
  * 自定义多级缓存管理。构建 value = ‘customCache’ 和自定义多级缓存 MultiLevelCache 的一对一映射。

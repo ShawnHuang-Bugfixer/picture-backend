@@ -1,15 +1,16 @@
 package com.xin.picturebackend.config.cache;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.data.redis.cache.RedisCache;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
 
 /**
  * 实现 Cache 接口，封装 CaffeineCache 和 RedisCache 以实现热点 key 多重缓存逻辑。
  */
+@Slf4j
 public class MultiLevelCache implements Cache {
     private final String name;
     private final CaffeineCache caffeineCache;
@@ -32,13 +33,14 @@ public class MultiLevelCache implements Cache {
         // 1. 查询Caffeine
         ValueWrapper value = caffeineCache.get(key);
         if (value != null) {
+//            log.error("get key:{} from caffeine", key);
             return value;
         }
 
         // 2. 查询Redis
         ValueWrapper redisValue = redisCache.get(key);
         if (redisValue != null) {
-            // fixme 只查询数据，caffeine 存放的热点数据单独控制
+//            log.error("get key:{} from redis", key);
             return redisValue;
         }
         return null;
@@ -96,12 +98,10 @@ public class MultiLevelCache implements Cache {
             if (value != null) return value;
 
             // 2. 双重检查锁防止并发重复加载
-            synchronized (this) {
-                value = (T) this.get(key);
-                if (value == null) {
-                    value = valueLoader.call();      // 实际加载数据
-                    this.put(key, value);            // 写入多级缓存
-                }
+            value = (T) this.get(key);
+            if (value == null) {
+                value = valueLoader.call();      // 实际加载数据
+                this.put(key, value);            // 写入多级缓存
             }
             return value;
         } catch (Exception e) {
@@ -116,7 +116,6 @@ public class MultiLevelCache implements Cache {
     @Override
     public void put(Object key, Object value) {
         redisCache.put(key, value);           // 同步写Redis保证持久化
-//        caffeineCache.put(key, value); // fixme 写入热点数据使用单独逻辑控制
     }
 
     /**

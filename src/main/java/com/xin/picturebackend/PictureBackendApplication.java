@@ -4,14 +4,14 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @MapperScan("com.xin.picturebackend.mapper")
 @EnableAspectJAutoProxy(exposeProxy = true) // 获取代理对象
+@EnableScheduling
 /**
- * todo 4. 重写 pictureVO 查询，调用查询 hotkey 的多级缓存逻辑。
- *      2. 重写更新逻辑 cache-aside 先查数据库然后删除缓存，缓存重构过程中需要使用互斥锁
- *      切点被多个切面织入，增强的执行顺序？
+ * todo 2. 重写更新逻辑 cache-aside 先查数据库然后删除缓存，缓存重构过程中需要使用互斥锁
  *      5. 重写分页查询逻辑，缓存查询
  *      6. 布隆过滤应该抓取所有数据，同时新增数据时，必须将新增数据加入到布隆过滤
  *

@@ -20,21 +20,13 @@ public enum RedisCacheTypeEnum {
     // 默认缓存，过期时间 1 小时，JSON 序列化，启用前缀，不缓存 null
     DEFAULT("defaultCache",
             Duration.ofHours(1),
-            true,
+            false,
             true,
             RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
             RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())),
 
-    // 特殊缓存，过期时间 30 分钟，字符串序列化，禁用前缀，允许缓存 null
-    SPECIAL("specialCache",
-            Duration.ofMinutes(30),
-            false,
-            false,
-            RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
-            RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())),
-
-    HOTKEY("hotkey",
-            Duration.ofMinutes(30),
+    HOTPictureKEY("pictureHotKey",
+            Duration.ofMinutes(60 * 24),
             false,
             true,
             RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),

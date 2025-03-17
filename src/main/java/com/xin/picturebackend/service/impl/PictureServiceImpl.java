@@ -302,7 +302,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     /**
      * 批量从 bing 拉取指定关键词 keyword 的图片，返回成功上传 COS 的数量。
-     * fixme 拉取速度缓慢，需要优化。
      *
      * @param pictureUploadByBatchRequest 包含 关键词和最大抓取数量
      * @param loginUser                   登录用户
@@ -430,17 +429,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     /**
-     * todo 重写 pictureVO 查询，调用查询 hotkey 的多级缓存逻辑。
-     *      跟踪单线程数据请求流程
-     *      跟踪多并发数据写入 caffeine
-     *      连接点存在多个增强执行先后顺序？
      *
      * @param id picture id
      * @return 返回去敏后数据 pictureVO
      */
     @Override
-    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id")
+    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id") // fixme sync 是否需要开启？
     public PictureVO getPictureVOById(long id) {
+        log.error("缓存失效！");
         if (!pictureBloomFilter.contains(String.valueOf(id))) {
             return null;
         }
