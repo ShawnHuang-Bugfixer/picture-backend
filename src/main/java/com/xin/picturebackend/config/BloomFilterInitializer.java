@@ -35,8 +35,30 @@ public class BloomFilterInitializer {
         // 图片场景的布隆过滤器
         pictureBloomFilter = redissonClient.getBloomFilter("pictureBloomFilter");
         pictureBloomFilter.tryInit(10000000L, 0.01);  // 图片预期10万数据，误判率1%
-        List<Long> pictureIDs = pictureMapper.selectList(new QueryWrapper<>()).stream().map(Picture::getId).toList();
-        pictureIDs.forEach((i) -> pictureBloomFilter.add(String.valueOf(i)));
+
+        int batchSize = 1000; // 每批次处理的数据量
+        long offset = 0; // 当前批次起始位置
+        boolean hasMoreData = true;
+
+        while (hasMoreData) {
+            // 分批次查询数据
+            QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+            queryWrapper.last("LIMIT " + offset + ", " + batchSize);
+            List<Long> pictureIDs = pictureMapper.selectList(queryWrapper)
+                    .stream()
+                    .map(Picture::getId)
+                    .toList();
+
+            // 将当前批次的ID添加到布隆过滤器中
+            pictureIDs.forEach(id -> pictureBloomFilter.add(String.valueOf(id)));
+
+            // 判断是否还有更多数据
+            if (pictureIDs.size() < batchSize) {
+                hasMoreData = false;
+            } else {
+                offset += batchSize; // 更新偏移量，准备查询下一批次
+            }
+        }
     }
 
     // 图片过滤器Bean

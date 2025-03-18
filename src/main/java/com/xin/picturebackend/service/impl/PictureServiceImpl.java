@@ -130,6 +130,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 4. 保存到数据库
         boolean result = this.saveOrUpdate(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败");
+        pictureBloomFilter.add(picture.getId().toString());
         return PictureVO.objToVo(picture);
     }
 
