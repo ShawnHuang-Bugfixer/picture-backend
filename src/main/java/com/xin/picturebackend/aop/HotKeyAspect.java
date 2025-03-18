@@ -41,8 +41,6 @@ import java.util.concurrent.atomic.LongAdder;
 /**
  * 将一段时间内访问次数超过指定阈值的 key 视为 hotKey 并写入 caffeine
  *
- * todo 多个切面执行顺序？
- *      梳理缓存穿透（缓存 null，布隆过滤）。缓存击穿（锁，cache-aside）。缓存雪崩（随机 ttl）
  * @author 黄兴鑫
  * @since 2025/3/15 15:17
  */

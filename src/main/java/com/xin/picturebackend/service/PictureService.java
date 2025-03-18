@@ -3,10 +3,7 @@ package com.xin.picturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.model.dto.file.UploadPictureResult;
-import com.xin.picturebackend.model.dto.picture.PictureQueryRequest;
-import com.xin.picturebackend.model.dto.picture.PictureReviewRequest;
-import com.xin.picturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.xin.picturebackend.model.dto.picture.PictureUploadRequest;
+import com.xin.picturebackend.model.dto.picture.*;
 import com.xin.picturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xin.picturebackend.model.entity.User;
@@ -45,4 +42,8 @@ public interface PictureService extends IService<Picture> {
     int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
     PictureVO getPictureVOById(long id);
+
+    void updatePicture(PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request);
+
+    Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest);
 }

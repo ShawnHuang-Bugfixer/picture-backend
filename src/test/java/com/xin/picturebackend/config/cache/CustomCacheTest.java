@@ -6,8 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.data.redis.cache.RedisCacheManager;
 
 import javax.annotation.Resource;
+import java.util.Collection;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,6 +30,12 @@ public class CustomCacheTest {
 
     @Resource
     private CacheManager multiLevelCacheManger;
+
+    @Resource
+    private RedisCacheManager redisCacheManager;
+
+    @Resource
+    private CaffeineCacheManager caffeineCacheManager;
 
     @BeforeEach
     void clearCache() {
@@ -58,5 +67,32 @@ public class CustomCacheTest {
 
         // 第二次调用 - 应直接从缓存获取
         System.out.println(trackService.getTrack(1));
+    }
+
+    @Test
+    void testCustomTTL() {
+        trackService.getTrack(1);
+        Collection<String> cacheNames = redisCacheManager.getCacheNames();
+        for (String cacheName : cacheNames) {
+            System.out.println(cacheName);
+            Cache cache = redisCacheManager.getCache(cacheName);
+            if (cache == null) return;
+            Cache.ValueWrapper valueWrapper = cache.get("picture:vo:1");
+            System.out.println(valueWrapper.get());
+        }
+    }
+
+    @Test
+    void testFromCaffeine() {
+        trackService.getTrackFromCaffeine(1);
+        Collection<String> cacheNames = caffeineCacheManager.getCacheNames();
+        for (String cacheName : cacheNames) {
+            System.out.println(cacheName);
+            Cache cache = caffeineCacheManager.getCache(cacheName);
+            if (cache == null) return;
+            Cache.ValueWrapper valueWrapper = cache.get("picture:vo:1");
+            System.out.println(valueWrapper);
+//            System.out.println(valueWrapper.get());
+        }
     }
 }

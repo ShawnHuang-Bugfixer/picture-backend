@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -14,10 +15,7 @@ import com.xin.picturebackend.manager.upload.FilePictureUpload;
 import com.xin.picturebackend.manager.upload.URLPictureUpload;
 import com.xin.picturebackend.mapper.ImagesearchhistoryMapper;
 import com.xin.picturebackend.model.dto.file.UploadPictureResult;
-import com.xin.picturebackend.model.dto.picture.PictureQueryRequest;
-import com.xin.picturebackend.model.dto.picture.PictureReviewRequest;
-import com.xin.picturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.xin.picturebackend.model.dto.picture.PictureUploadRequest;
+import com.xin.picturebackend.model.dto.picture.*;
 import com.xin.picturebackend.model.entity.Imagesearchhistory;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.User;
@@ -33,21 +31,25 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-//import org.redisson.api.RBloomFilter;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.support.NullValue;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -79,6 +81,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private RBloomFilter<String> pictureBloomFilter;
+
+    @Resource
+    private RedissonClient redissonClient;
 
     /**
      * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
@@ -429,6 +434,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     /**
+     * cache-aside 多级缓存架构。同时实现 hotkey 监控。
      *
      * @param id picture id
      * @return 返回去敏后数据 pictureVO
@@ -445,6 +451,81 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             return null;
         }
         return getPictureVO(picture);
+    }
+
+    @Override
+    @CacheEvict(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #pictureUpdateRequest.id")
+    public void updatePicture(PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
+        if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 将实体类和 DTO 进行转换
+        Picture picture = new Picture();
+        BeanUtils.copyProperties(pictureUpdateRequest, picture);
+        // 注意将 list 转为 string
+        picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
+        // 数据校验
+        validPicture(picture);
+        // 判断是否存在
+        long id = pictureUpdateRequest.getId();
+        Picture oldPicture = this.getById(id);
+        ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
+        // 设置审核状态
+        fillPicture(picture, userService.getLoginUser(request));
+        // 操作数据库
+        boolean result = updateById(picture);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+    }
+
+    /**
+     * 热门页面：缓存前N页（如1-10页），TTL较短（如1-5分钟）。
+     * 冷门页面：按需缓存或设置较长TTL（如10分钟），结合LRU淘汰策略。
+     *
+     * @param pictureQueryRequest 图片查询
+     * @return 返回图片视图集合
+     */
+    @Override
+    @Caching(
+            cacheable = {
+                    @Cacheable(cacheManager = "redisCacheManager",
+                            value = "pictureHotVOList",
+                            key = "'picture:pictureVOList:' + "
+                                    + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
+                                    + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
+                            condition = "#a0.current >= 1 && #a0.current <= 20"  // 使用 #a0
+                    ),
+                    @Cacheable(cacheManager = "redisCacheManager",
+                            value = "pictureColdVOList",
+                            key = "'picture:pictureVOList:' + "
+                                    + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
+                                    + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
+                            condition = "#a0.current >= 21 && #a0.current <= 100"
+                    )
+            }
+    )
+    public Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest) {
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户只能查看已经通过审核的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 查询数据库
+        // 使用分布式锁替代synchronized
+        RLock lock = redissonClient.getLock("picture:PAGE_LOCK:" + current);
+        try {
+            if (lock.tryLock(1, 10, TimeUnit.SECONDS)) {
+                pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+                Page<Picture> picturePage = this.page(new Page<>(current, size),
+                        this.getQueryWrapper(pictureQueryRequest));
+                return getPictureVOPage(picturePage);
+            }
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        } finally {
+            lock.unlock();
+        }
+        return new Page<>();
     }
 }
 

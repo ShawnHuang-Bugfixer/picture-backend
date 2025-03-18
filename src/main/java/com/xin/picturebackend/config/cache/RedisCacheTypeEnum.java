@@ -25,12 +25,27 @@ public enum RedisCacheTypeEnum {
             RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
             RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())),
 
-    HOTPictureKEY("pictureHotKey",
-            Duration.ofMinutes(60 * 24),
+    HOT_PICTURE_KEY("pictureHotKey",
+            Duration.ofMinutes(60),
+            false,
+            true,
+            RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
+            RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())),
+
+    HOT_PICTUREVO_List("pictureHotVOList",
+            Duration.ofMinutes(10), // 600
+            false,
+            true,
+            RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
+            RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer())),
+
+    COLD_PICTUREVO_List("pictureColdVOList",
+            Duration.ofMinutes(2), // 120
             false,
             true,
             RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()),
             RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
+
     private final String cacheName;
     private final RedisCacheConfiguration cacheConfig;
 

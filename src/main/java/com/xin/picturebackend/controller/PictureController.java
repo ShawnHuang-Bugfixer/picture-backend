@@ -19,6 +19,7 @@ import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.UserService;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -112,25 +113,7 @@ public class PictureController {
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
-        if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        // 将实体类和 DTO 进行转换
-        Picture picture = new Picture();
-        BeanUtils.copyProperties(pictureUpdateRequest, picture);
-        // 注意将 list 转为 string
-        picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
-        // 数据校验
-        pictureService.validPicture(picture);
-        // 判断是否存在
-        long id = pictureUpdateRequest.getId();
-        Picture oldPicture = pictureService.getById(id);
-        ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 设置审核状态
-        pictureService.fillPicture(picture, userService.getLoginUser(request));
-        // 操作数据库
-        boolean result = pictureService.updateById(picture);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        pictureService.updatePicture(pictureUpdateRequest, request);
         return ResultUtils.success(true);
     }
 
@@ -178,17 +161,8 @@ public class PictureController {
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<PictureVO>> listPictureVOByPage(@RequestBody PictureQueryRequest pictureQueryRequest) {
-        long current = pictureQueryRequest.getCurrent();
-        long size = pictureQueryRequest.getPageSize();
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        // 普通用户只能查看已经通过审核的图片
-        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-        // 查询数据库
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
-        // 获取封装类
-        return ResultUtils.success(pictureService.getPictureVOPage(picturePage));
+        Page<PictureVO> pageResult = pictureService.listPictureVoByPage(pictureQueryRequest);
+        return ResultUtils.success(pageResult);
     }
 
     /**
