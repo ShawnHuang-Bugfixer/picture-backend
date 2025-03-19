@@ -85,7 +85,7 @@ public class PictureController {
 
     /**
      * 删除图片
-     * fixme : 根据 id 删除 picture 时，只删除了数据库信息，并未删除对象存储中的图片。
+     *
      */
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
@@ -104,6 +104,8 @@ public class PictureController {
         // 操作数据库
         boolean result = pictureService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        // 删除 cos
+        pictureService.clearPictureFile(oldPicture);
         return ResultUtils.success(true);
     }
 

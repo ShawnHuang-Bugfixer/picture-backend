@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
+import com.xin.picturebackend.manager.CosManager;
 import com.xin.picturebackend.manager.upload.FilePictureUpload;
 import com.xin.picturebackend.manager.upload.URLPictureUpload;
 import com.xin.picturebackend.mapper.ImagesearchhistoryMapper;
@@ -39,6 +40,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationContext;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -85,10 +87,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private RedissonClient redissonClient;
 
+    @Resource
+    private CosManager cosManager;
+
     /**
      * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
-     * 未携带图片 id 时，直接上传图片到 COS 中，并且填充其他信息后保存到数据库。携带 id 时，重新上传到 COS 中，修改数据库中指定 id 的 picture 的对象存储地址 url。
-     * fixme : 携带 id 时，只修改了数据库中指定 id 的 picture 的对象存储地址 url，并未删除原有的图片。
      *
      * @param pictureUploadRequest 携带图片 id, 文件 url, 文件名
      * @param user                 用户信息
@@ -112,6 +115,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             if (!oldPicture.getUserId().equals(user.getId()) && !userService.isAdmin(user)) {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
             }
+            // 删除 cos 旧文件
+            clearPictureFile(oldPicture);
         }
         // 3. 上传图片到公共图库
         String uploadPrefix = String.format("public/%s", user.getId());
@@ -528,6 +533,40 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             lock.unlock();
         }
         return new Page<>();
+    }
+
+    @Async
+    @Override
+    public void clearPictureFile(Picture picture) {
+        // 判断该图片是否被多条记录使用
+        String pictureUrl = picture.getUrl();
+        long count = this.lambdaQuery()
+                .eq(Picture::getUrl, pictureUrl)
+                .count();
+        // 有不止一条记录用到了该图片，不清理
+        if (count > 1) {
+            return;
+        }
+        String webpKey = cosKeyHandler(picture.getUrl());
+        String thumbnailKey = cosKeyHandler(picture.getThumbnailUrl());
+        String originKey = cosOriginKeyHandler(webpKey, thumbnailKey);
+        cosManager.deleteObject(webpKey);
+        cosManager.deleteObject(originKey);
+        cosManager.deleteObject(thumbnailKey);
+    }
+
+    private static String cosOriginKeyHandler(String webpKey, String thumbnailKey) {
+        int i = thumbnailKey.indexOf(".");
+        String fileExtension = thumbnailKey.substring(i);
+        String keyPrefix = webpKey.substring(0, webpKey.length() - 5);
+        return keyPrefix + fileExtension;
+    }
+
+    private static String cosKeyHandler(String url) {
+        String COS_PREFIX_URL = "https://huang-picture-1345225028.cos.ap-chengdu.myqcloud.com";
+        ThrowUtils.throwIf(!url.contains(COS_PREFIX_URL), ErrorCode.PARAMS_ERROR, "cosKey 处理错误，url 错误");
+        int i = url.indexOf(COS_PREFIX_URL);
+        return url.substring(i + COS_PREFIX_URL.length());
     }
 }
 

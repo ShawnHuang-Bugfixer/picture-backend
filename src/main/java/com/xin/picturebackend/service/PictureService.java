@@ -8,6 +8,7 @@ import com.xin.picturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.PictureVO;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
@@ -46,4 +47,7 @@ public interface PictureService extends IService<Picture> {
     void updatePicture(PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request);
 
     Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest);
+
+    @Async
+    void clearPictureFile(Picture oldPicture);
 }
