@@ -54,10 +54,17 @@ ALTER TABLE picture
     ADD COLUMN reviewerId    BIGINT        NULL COMMENT '审核人 ID',
     ADD COLUMN reviewTime    DATETIME      NULL COMMENT '审核时间';
 
+-- fixme 图片查重
 -- 修改图片表，增加感知哈希值字段和索引
 ALTER TABLE picture
     ADD COLUMN pHash VARCHAR(64) DEFAULT NULL COMMENT '感知哈希值',
     ADD INDEX idx_pHash (pHash);
+
+-- 修改图片表，新增缩略图url
+ALTER TABLE picture
+    -- 添加新列
+    ADD COLUMN thumbnailUrl varchar(512) NULL COMMENT '缩略图 url';
+
 
 -- 创建基于 reviewStatus 列的索引（审核状态）
 CREATE INDEX idx_reviewStatus ON picture (reviewStatus);

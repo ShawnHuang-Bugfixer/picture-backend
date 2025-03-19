@@ -26,24 +26,16 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
-
-@Aspect
-@Component
-@Slf4j
-@Order(Ordered.HIGHEST_PRECEDENCE)
-
-
-
-//      测试 @Cacheable value 未指定 hot 能否正确执行逻辑
-//      测试数据查询是否正确经过缓存逻辑，
-//      测试切面 hotkey 是否生效，数据是否正确存入 caffeine
-
 /**
  * 将一段时间内访问次数超过指定阈值的 key 视为 hotKey 并写入 caffeine
  *
  * @author 黄兴鑫
  * @since 2025/3/15 15:17
  */
+@Aspect
+@Component
+@Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class HotKeyAspect {
 
     private static final long HOT_THRESHOLD = 100; // 5s 内 key 出现 100 次视为 hotkey

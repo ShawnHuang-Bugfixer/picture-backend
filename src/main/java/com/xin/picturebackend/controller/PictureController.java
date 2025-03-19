@@ -44,7 +44,7 @@ public class PictureController {
 
     /**
      * 上传图片（可重新上传）
-     * fixme : 携带 id 时，只修改了数据库中指定 id 的 picture 的对象存储地址 url，并未删除原有的图片。 ?? 如何保证图片信息在对象存储和数据库的一致 ??
+     * fixme: 请求头multipart/form-data, knife4j 将参数列表解析为了 String 类型，需要手动转化json 为实体。
      */
     @PostMapping("/upload")
 //    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)

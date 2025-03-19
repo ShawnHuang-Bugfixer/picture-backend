@@ -416,6 +416,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private static Picture getPicture(String picName, User user, UploadPictureResult uploadPictureResult, Long pictureId) {
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         if (StrUtil.isNotBlank(picName)) {
             picture.setName(picName);
         } else {

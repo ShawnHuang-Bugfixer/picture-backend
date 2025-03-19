@@ -122,6 +122,11 @@ public class Picture implements Serializable {
      */
     private String pHash;
 
+    /**
+     * 缩略图 url
+     */
+    private String thumbnailUrl;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }
