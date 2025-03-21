@@ -27,14 +27,14 @@
         <result property="reviewTime" column="reviewTime"/>
         <result property="pHash" column="pHash"/>
         <result property="thumbnailUrl" column="thumbnailUrl" jdbcType="VARCHAR"/>
+        <result property="spaceId" column="spaceId"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,url,thumbnailUrl,name,
-    introduction,category,tags,
-    picSize,picWidth,picHeight,
-    picScale,picFormat,userId,
-    createTime,editTime,updateTime,
-    isDelete
+        id,url,name,introduction,category,tags,
+        picSize,picWidth,picHeight,picScale,picFormat,
+        userId,createTime,editTime,updateTime,isDelete,
+        reviewStatus,reviewMessage,reviewerId,reviewTime,pHash,
+        thumbnailUrl,spaceId
     </sql>
 </mapper>
