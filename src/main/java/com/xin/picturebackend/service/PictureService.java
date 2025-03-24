@@ -21,6 +21,13 @@ import javax.servlet.http.HttpServletRequest;
  */
 public interface PictureService extends IService<Picture> {
 
+    /**
+     * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
+     *
+     * @param pictureUploadRequest 携带图片 id, 文件 url, 文件名
+     * @param user                 用户信息
+     * @return 返回 PictureVO 视图对象，包含图片 id
+     */
     PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user);
 
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
@@ -41,6 +48,13 @@ public interface PictureService extends IService<Picture> {
 
     void fillPicture(Picture picture, User loginUser);
 
+    /**
+     * 批量从 bing 拉取指定关键词 keyword 的图片，返回成功上传 COS 的数量。
+     *
+     * @param pictureUploadByBatchRequest 包含 关键词和最大抓取数量
+     * @param loginUser                   登录用户
+     * @return 返回 上传数量
+     */
     int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
     PictureVO getPictureVOById(long id, HttpServletRequest request);

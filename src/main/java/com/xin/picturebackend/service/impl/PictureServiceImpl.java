@@ -100,13 +100,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Autowired
     private TransactionTemplate transactionTemplate;
 
-    /**
-     * 根据 resourceSource 类型，上传图片到公共图库。此过程中自动设置审核状态，并且填充其他信息最后保存到数据库。
-     *
-     * @param pictureUploadRequest 携带图片 id, 文件 url, 文件名
-     * @param user                 用户信息
-     * @return 返回 PictureVO 视图对象，包含图片 id
-     */
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
         // 1. 图片更新请求和登录用户不能为 null
@@ -182,12 +175,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return PictureVO.objToVo(picture);
     }
 
-    /**
-     * 根据传入请求，动态拼接 sql 并返回 QueryWrapper
-     *
-     * @param pictureQueryRequest 图片查询请求，封装查询条件
-     * @return 返回构造好的 QueryWrapper<Picture> 对象
-     */
     @Override
     public QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest) {
         // 参数校验
@@ -213,6 +200,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Long reviewerId = pictureQueryRequest.getReviewerId();
         Long spaceId = pictureQueryRequest.getSpaceId();
         boolean nullSpaceId = pictureQueryRequest.isNullSpaceId();
+        Date startEditTime = pictureQueryRequest.getStartEditTime();
+        Date endEditTime = pictureQueryRequest.getEndEditTime();
         // 拼接查询条件
         queryWrapper.eq(ObjUtil.isNotEmpty(reviewStatus), "reviewStatus", reviewStatus);
         queryWrapper.like(StrUtil.isNotBlank(reviewMessage), "reviewMessage", reviewMessage);
@@ -234,6 +223,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.eq(ObjUtil.isNotEmpty(picScale), "picScale", picScale);
         queryWrapper.eq(ObjUtil.isNotEmpty(spaceId), "spaceId", spaceId);
         queryWrapper.isNull(nullSpaceId, "spaceId");
+        queryWrapper.between(ObjUtil.isNotEmpty(startEditTime), "editTime", startEditTime, endEditTime);
         // JSON 数组查询
         if (CollUtil.isNotEmpty(tags)) {
             for (String tag : tags) {
@@ -259,13 +249,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return pictureVO;
     }
 
-    /**
-     * 从 picturePage 中获取 userid 集合，由该集合获取 user 对象集合，封装 pictureVOPage，最后将
-     * user 对象转换为 userVo 封装到 pictureVOPage
-     *
-     * @param picturePage 原始数据分页
-     * @return 返回封装后的 pictureVO 视图分页
-     */
     @Override
     public Page<PictureVO> getPictureVOPage(Page<Picture> picturePage) {
         List<Picture> records = picturePage.getRecords();
@@ -286,11 +269,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return pictureVOPage;
     }
 
-    /**
-     * 校验图片格式
-     *
-     * @param picture 图片对象
-     */
     @Override
     public void validPicture(Picture picture) {
         ThrowUtils.throwIf(picture == null, ErrorCode.PARAMS_ERROR);
@@ -308,12 +286,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    /**
-     * 修改图片审核状态为 ‘通过审核’或者‘未通过审核’
-     *
-     * @param pictureReviewRequest 图片审核请求
-     * @param loginUser            当前登录用户
-     */
     @Override
     public void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser) {
         // 1. 参数校验
@@ -338,12 +310,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "审核失败");
     }
 
-    /**
-     * 填充图片审核状态：默认为待审核，管理员上传的图片默认为通过审核
-     *
-     * @param picture   Not Null 图片对象
-     * @param loginUser Not Null 登录用户信息
-     */
     @Override
     public void fillPicture(Picture picture, User loginUser) {
         if (userService.isAdmin(loginUser)) {
@@ -358,13 +324,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    /**
-     * 批量从 bing 拉取指定关键词 keyword 的图片，返回成功上传 COS 的数量。
-     *
-     * @param pictureUploadByBatchRequest 包含 关键词和最大抓取数量
-     * @param loginUser                   登录用户
-     * @return 返回 上传数量
-     */
     @Override
     public int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
         // 1. 参数校验

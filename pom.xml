@@ -14,6 +14,7 @@
         <spring-boot.version>2.7.6</spring-boot.version>
     </properties>
     <dependencies>
+
         <!-- redisson -->
         <dependency>
             <groupId>org.redisson</groupId>
