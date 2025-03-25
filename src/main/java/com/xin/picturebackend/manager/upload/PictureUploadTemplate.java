@@ -77,7 +77,9 @@ public abstract class PictureUploadTemplate<T> {
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicSize(FileUtil.size(file));
         uploadPictureResult.setPicName(originalFilename);
+        uploadPictureResult.setPicColor(imageInfo.getAve());
         uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + uploadPath);
+        uploadPictureResult.setThumbnailUrl(uploadPictureResult.getUrl());
         return uploadPictureResult;
     }
 
@@ -94,7 +96,6 @@ public abstract class PictureUploadTemplate<T> {
             file = File.createTempFile(uploadPath, null);
             // 3. 将 picture 写入临时文件，将临时文件上传至 COS 对象存储并获取图片信息
             writeToTempFile(resourceSource, file);
-//            ImageInfo imageInfo = cosManager.putPictureObject(uploadPath, file).getCiUploadResult().getOriginalInfo().getImageInfo();
             PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
@@ -107,7 +108,7 @@ public abstract class PictureUploadTemplate<T> {
                     thumbnailCiObject = objectList.get(1);
                 }
                 // 封装压缩图返回结果
-                return buildResult(originalFilename, compressedCiObject,thumbnailCiObject);
+                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject, imageInfo);
             }
             // 4. 封装图片信息构造 UploadPictureResult 对象返回
             return getUploadPictureResult(imageInfo, file, originalFilename, uploadPath);
@@ -119,7 +120,7 @@ public abstract class PictureUploadTemplate<T> {
         }
     }
 
-    private UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject, CIObject thumbnail) {
+    private UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject, CIObject thumbnail, ImageInfo imageInfo) {
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         int picWidth = compressedCiObject.getWidth();
         int picHeight = compressedCiObject.getHeight();
@@ -130,6 +131,7 @@ public abstract class PictureUploadTemplate<T> {
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(compressedCiObject.getFormat());
         uploadPictureResult.setPicSize(compressedCiObject.getSize().longValue());
+        uploadPictureResult.setPicColor(getStandardRGB(imageInfo.getAve()));
         // 设置图片为压缩后 .webp 的地址
         uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressedCiObject.getKey());
         // 设置图片缩略图地址
@@ -137,15 +139,67 @@ public abstract class PictureUploadTemplate<T> {
         return uploadPictureResult;
     }
 
+    /**
+     * 从缩写 RGB 中获取标准 RGB
+     */
+    private static String getStandardRGB(String rgb) {
+        if (rgb == null || rgb.isEmpty()) {
+            return "0x000000"; // 默认返回黑色
+        }
+
+        // 检查是否以 "0x" 开头
+        if (!rgb.startsWith("0x")) {
+            return "0x000000"; // 如果不是 "0x" 开头，返回默认值
+        }
+
+        // 移除 "0x" 前缀
+        String hexValue = rgb.substring(2);
+
+        // 检查是否为有效的十六进制字符
+        if (!hexValue.matches("[0-9a-fA-F]+")) {
+            return "0x000000"; // 默认返回黑色
+        }
+
+        // 处理简写形式
+        if (hexValue.length() == 3) {
+            // 标准简写形式，扩展为 6 位
+            StringBuilder standardRGB = new StringBuilder("0x");
+            for (char c : hexValue.toCharArray()) {
+                standardRGB.append(c).append(c);
+            }
+            return standardRGB.toString();
+        } else if (hexValue.length() == 6) {
+            // 已经是标准格式，直接返回
+            return rgb;
+        } else {
+            // 非标准长度，尝试扩展或截取
+            if (hexValue.length() < 6) {
+                // 扩展为 6 位，缺失的部分用 "0" 填充
+                StringBuilder standardRGB = new StringBuilder("0x" + hexValue);
+                while (standardRGB.length() < 8) { // "0x" + 6 位 = 8 位
+                    standardRGB.append("0");
+                }
+                return standardRGB.toString();
+            } else {
+                // 截取前 6 位
+                return "0x" + hexValue.substring(0, 6);
+            }
+        }
+    }
 
     /**
      * 删除临时文件
      */
-    private void deleteTempFile(File file, String uploadPath) {
+    private static void deleteTempFile(File file, String uploadPath) {
         if (file != null) {
             if (!file.delete()) {
                 log.error("file delete error, filepath: {}", uploadPath);
             }
         }
+    }
+
+    public static void main(String[] args) {
+        String rgb = "0xF00";
+        System.out.println(getStandardRGB(rgb));
     }
 }

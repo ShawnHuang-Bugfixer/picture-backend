@@ -1,15 +1,15 @@
 package com.xin.picturebackend.others;
 
 
-import com.xin.picturebackend.imagesearch.model.ImageSearchResult;
+import com.xin.picturebackend.apiintegration.imagesearch.model.ImageSearchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static com.xin.picturebackend.imagesearch.sub.GetImagePageUrlApi.getImagePageUrl;
-import static com.xin.picturebackend.imagesearch.sub.GetSimilarPictureListApi.getSimilarPictureList;
-import static com.xin.picturebackend.imagesearch.sub.GetSimilarPictureListUrlApi.getSimilarPictureListUrl;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetImagePageUrlApi.getImagePageUrl;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetSimilarPictureListApi.getSimilarPictureList;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetSimilarPictureListUrlApi.getSimilarPictureListUrl;
 
 /**
  *

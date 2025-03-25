@@ -131,6 +131,11 @@ public class Picture implements Serializable {
      * 空间 id（为空表示公共空间）
      */
     private Long spaceId;
+
+    /**
+     * 图片主色调
+     */
+    private String picColor;
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

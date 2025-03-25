@@ -1,4 +1,4 @@
-package com.xin.picturebackend.imagesearch.sub;
+package com.xin.picturebackend.apiintegration.imagesearch.sub;
 
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.http.HttpRequest;

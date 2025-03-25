@@ -28,6 +28,7 @@
         <result property="pHash" column="pHash"/>
         <result property="thumbnailUrl" column="thumbnailUrl" jdbcType="VARCHAR"/>
         <result property="spaceId" column="spaceId"/>
+        <result property="picColor" column="picColor" />
     </resultMap>
 
     <sql id="Base_Column_List">
@@ -35,6 +36,6 @@
         picSize,picWidth,picHeight,picScale,picFormat,
         userId,createTime,editTime,updateTime,isDelete,
         reviewStatus,reviewMessage,reviewerId,reviewTime,pHash,
-        thumbnailUrl,spaceId
+        thumbnailUrl,spaceId,picColor
     </sql>
 </mapper>

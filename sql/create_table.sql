@@ -69,6 +69,11 @@ ALTER TABLE picture
 ALTER TABLE picture
     ADD COLUMN spaceId  bigint  null comment '空间 id（为空表示公共空间）';
 
+-- 修改图片表，新增主色调
+ALTER TABLE picture
+    ADD COLUMN picColor varchar(16) null comment '图片主色调';
+
+
 -- 创建索引
 CREATE INDEX idx_spaceId ON picture (spaceId);
 
@@ -110,6 +115,7 @@ create table if not exists space
     index idx_spaceName (spaceName),  -- 提升基于空间名称的查询效率
     index idx_spaceLevel (spaceLevel) -- 提升按空间级别查询的效率
 ) comment '空间' collate = utf8mb4_unicode_ci;
+
 
 
 

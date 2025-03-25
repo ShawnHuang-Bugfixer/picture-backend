@@ -50,7 +50,7 @@ public class URLPictureUpload extends PictureUploadTemplate<String>{
             final List<String> ALLOW_CONTENT_TYPES = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/webp");
             ThrowUtils.throwIf(!ALLOW_CONTENT_TYPES.contains(contentType), ErrorCode.PARAMS_ERROR, "文件类型错误！");
             // 3. 校验文件大小
-            ThrowUtils.throwIf(response.contentLength() > 1024 * 1024 * 2, ErrorCode.PARAMS_ERROR, "文件大小不能超过 2MB！");
+            ThrowUtils.throwIf(response.contentLength() > 1024 * 1024 * 8, ErrorCode.PARAMS_ERROR, "文件大小不能超过 8MB！");
             return contentType.substring(contentType.indexOf("/") + 1);
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "资源连接超时");
@@ -59,7 +59,12 @@ public class URLPictureUpload extends PictureUploadTemplate<String>{
 
     @Override
     protected String getOriginalFilename(String resourceSource, String suffix) {
-        return FileUtil.mainName(resourceSource) + "." + suffix;
+        String fileName = FileUtil.mainName(resourceSource);
+        int maxLen = 128 - suffix.length() - 1;
+        if (fileName.length() >= maxLen) {
+            fileName = fileName.substring(0, maxLen);
+        }
+        return fileName + "." + suffix;
     }
 
     @Override

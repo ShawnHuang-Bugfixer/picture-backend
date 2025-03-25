@@ -1,6 +1,7 @@
 package com.xin.picturebackend.manager.upload;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -22,8 +23,8 @@ public class FilePictureUpload extends PictureUploadTemplate<MultipartFile> {
     @Override
     protected String validatePicture(MultipartFile multipartFile) {
         ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件不能为空！");
-        final long SINGLE_PICTURE_MAX_SIZE = 2 * 1024 * 1024L;
-        ThrowUtils.throwIf(multipartFile.getSize() > SINGLE_PICTURE_MAX_SIZE, ErrorCode.PARAMS_ERROR, "文件大小不能超过2MB！");
+        final long SINGLE_PICTURE_MAX_SIZE = 8 * 1024 * 1024L;
+        ThrowUtils.throwIf(multipartFile.getSize() > SINGLE_PICTURE_MAX_SIZE, ErrorCode.PARAMS_ERROR, "文件大小不能超过8MB！");
         final List<String> ALLOW_FORMAT_LIST = Arrays.asList("jpeg", "jpg", "png", "webp");
         String fileSuffix = FileUtil.getSuffix(multipartFile.getOriginalFilename());
         ThrowUtils.throwIf(!ALLOW_FORMAT_LIST.contains(fileSuffix), ErrorCode.PARAMS_ERROR, "文件类型错误！");
@@ -32,7 +33,10 @@ public class FilePictureUpload extends PictureUploadTemplate<MultipartFile> {
 
     @Override
     protected String getOriginalFilename(MultipartFile resourceSource, String suffix) {
-        return resourceSource.getOriginalFilename();
+        String originalFilename = resourceSource.getOriginalFilename();
+        ThrowUtils.throwIf(StrUtil.isBlank(originalFilename), ErrorCode.PARAMS_ERROR, "文件名不能为空！");
+        ThrowUtils.throwIf(originalFilename.length() > 100, ErrorCode.PARAMS_ERROR, "文件名长度不能超过100个字符！");
+        return originalFilename;
     }
 
     @Override

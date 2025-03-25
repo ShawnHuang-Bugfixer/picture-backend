@@ -30,6 +30,7 @@ import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.mapper.PictureMapper;
 import com.xin.picturebackend.service.SpaceService;
 import com.xin.picturebackend.service.UserService;
+import com.xin.picturebackend.utils.ColorSimilarUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -52,10 +53,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -153,6 +151,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         Picture picture = getPicture(picName, user, uploadPictureResult, pictureId);
         picture.setSpaceId(spaceId);
+        picture.setPicColor(uploadPictureResult.getPicColor());
         // 重置审核状态
         fillPicture(picture, user);
         // 4. 保存到数据库
@@ -324,6 +323,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
+    // fixme 重构，接入第三方 api，获取图片 url 集合
     @Override
     public int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
         // 1. 参数校验
@@ -368,7 +368,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 if (successUploadCount >= paraCount) {
                     break;
                 }
-                Thread.sleep((int)(Math.random() * 1000));
+                Thread.sleep((int) (Math.random() * 1000));
             }
         } catch (RuntimeException e) {
             log.error("网络错误，请稍后重试", e);
@@ -376,100 +376,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             log.error("");
         }
         return successUploadCount;
-    }
-
-    /**
-     * 查询批量拉取历史表，返回指定关键词滑动分页的起始页码。
-     * 利用 keyword，查询数据库，如果不存在，first = 1 count = 35。
-     * 如果存在，从数据库中获取 first 和 count first += count。将结果写回数据库
-     *
-     * @param keyword 批量拉取图片的关键词
-     * @return 返回 keyword 对应的滑动分页起始页码
-     */
-    @Transactional
-    public int getScrollingPage(String keyword) {
-        int first = 1;
-        int count = 35;
-        int maxRetries = 3;
-        int retryCount = 0;
-        while (retryCount < maxRetries) {
-            QueryWrapper<Imagesearchhistory> historyQueryWrapper = new QueryWrapper<>();
-            historyQueryWrapper.eq("searchKeyword", keyword);
-            Imagesearchhistory selectedOne = historyMapper.selectOne(historyQueryWrapper);
-            if (selectedOne != null) {
-                count = selectedOne.getCount();
-                first = selectedOne.getFirst() + count;
-            }
-            selectedOne = ObjUtil.isNull(selectedOne) ? new Imagesearchhistory() : selectedOne;
-            selectedOne.setCount(count);
-            selectedOne.setFirst(first);
-            selectedOne.setUpdatedAt(new Date());
-            selectedOne.setSearchKeyword(keyword);
-            boolean success = historyService.saveOrUpdate(selectedOne); // 乐观锁
-            if (!success) {
-                retryCount++;
-                continue;
-            } else {
-                return first;
-            }
-        }
-        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取滑动分页页码失败");
-    }
-
-    /**
-     * 将数据万象返回的图片信息封装成 Picture 对象
-     *
-     * @param picName             批量抓取时，管理员设置的别名
-     * @param user                当前登录用户
-     * @param uploadPictureResult 数据万象返回的图片信息
-     * @param pictureId           图片id
-     * @return 返回 Picture 对象
-     */
-    private static Picture getPicture(String picName, User user, UploadPictureResult uploadPictureResult, Long pictureId) {
-        Picture picture = new Picture();
-        picture.setUrl(uploadPictureResult.getUrl());
-        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
-        if (StrUtil.isNotBlank(picName)) {
-            picture.setName(picName);
-        } else {
-            picture.setName(uploadPictureResult.getPicName());
-        }
-        picture.setPicSize(uploadPictureResult.getPicSize());
-        picture.setPicWidth(uploadPictureResult.getPicWidth());
-        picture.setPicHeight(uploadPictureResult.getPicHeight());
-        picture.setPicScale(uploadPictureResult.getPicScale());
-        picture.setPicFormat(uploadPictureResult.getPicFormat());
-        picture.setUserId(user.getId());
-        if (pictureId != null) {
-            picture.setId(pictureId);
-            picture.setEditTime(new Date());
-        }
-        return picture;
-    }
-
-    /**
-     * cache-aside 多级缓存架构。同时实现 hotkey 监控。
-     *
-     * @param id picture id
-     * @return 返回去敏后数据 pictureVO
-     */
-    @Override
-    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id", sync = true)
-    public PictureVO getPictureVOById(long id, HttpServletRequest request) {
-        log.error("缓存失效！");
-        if (!pictureBloomFilter.contains(String.valueOf(id))) {
-            return null;
-        }
-        Picture picture = this.getById(id);
-        if (picture == null) {
-            return null;
-        }
-        Long spaceId = picture.getSpaceId();
-        if (spaceId != null) {
-            User loginUser = userService.getLoginUser(request);
-            checkPictureAuth(loginUser, picture);
-        }
-        return getPictureVO(picture);
     }
 
     @Override
@@ -591,14 +497,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                             key = "'picture:pictureVOList:' + "
                                     + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
                                     + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
-                            condition = "#a0.current >= 1 && #a0.current <= 20"  // 使用 #a0
+                            condition = "#a0.current >= 1 && #a0.current <= 20 && #a0.spaceId == null"  // 使用 #a0
                     ),
                     @Cacheable(cacheManager = "redisCacheManager",
                             value = "pictureColdVOList",
                             key = "'picture:pictureVOList:' + "
                                     + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
                                     + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
-                            condition = "#a0.current >= 21 && #a0.current <= 100"
+                            condition = "#a0.current >= 21 && #a0.current <= 100 &&a0.spaceId == null"
                     )
             }
     )
@@ -658,6 +564,97 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         cosManager.deleteObject(thumbnailKey);
     }
 
+    @Override
+    public List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser) {
+        // 1. 校验参数
+        ThrowUtils.throwIf(spaceId == null || StrUtil.isBlank(picColor), ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        // 2. 校验空间权限
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+        if (!loginUser.getId().equals(space.getUserId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间访问权限");
+        }
+        // 3. 计算图片相似度并排序
+        List<Picture> spacePicList = this.lambdaQuery().eq(Picture::getSpaceId, spaceId)
+                .isNotNull(Picture::getPicColor)
+                .list();
+        // 如果没有图片，直接返回空列表
+        if (CollUtil.isEmpty(spacePicList)) {
+            return Collections.emptyList();
+        }
+        List<PictureVO> sortedResult = spacePicList.stream()
+                .sorted(Comparator.comparingDouble(picture -> {
+                    String rgb = picture.getPicColor();
+                    // 没有主色调的图片放到最后
+                    if (StrUtil.isBlank(rgb)) {
+                        return Double.MAX_VALUE;
+                    }
+                    return 1 - ColorSimilarUtils.getImageSimilarity(rgb, picColor);
+                }))
+                .limit(12)
+                .map(PictureVO::objToVo)
+                .toList();
+        return sortedResult;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser) {
+        List<Long> pictureIdList = pictureEditByBatchRequest.getPictureIdList();
+        Long spaceId = pictureEditByBatchRequest.getSpaceId();
+        String category = pictureEditByBatchRequest.getCategory();
+        List<String> tags = pictureEditByBatchRequest.getTags();
+        // 1. 校验参数
+        ThrowUtils.throwIf(spaceId == null || CollUtil.isEmpty(pictureIdList), ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        // 2. 校验空间权限
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+        if (!loginUser.getId().equals(space.getUserId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间访问权限");
+        }
+        // 3. 查询数据，写回更新数据
+        List<Picture> dbList = this.lambdaQuery()
+                .select(Picture::getId, Picture::getSpaceId)
+                .eq(Picture::getSpaceId, spaceId)
+                .in(Picture::getId, pictureIdList)
+                .list();
+        dbList.forEach(picture -> {
+            if (StrUtil.isNotBlank(category)) {
+                picture.setCategory(category);
+            }
+            if (CollUtil.isNotEmpty(tags)) {
+                picture.setTags(JSONUtil.toJsonStr(tags));
+            }
+        });
+        String nameRule = pictureEditByBatchRequest.getNameRule();
+        fillPictureNameWithNameRule(dbList, nameRule);
+        boolean b = this.updateBatchById(dbList);
+        if (!b) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "批量修改图片信息失败");
+        }
+    }
+
+    /**
+     * nameRule 格式为：图片{序号}
+     */
+    private void fillPictureNameWithNameRule(List<Picture> dbList, String nameRule) {
+        if (CollUtil.isEmpty(dbList) || StrUtil.isBlank(nameRule)) {
+            return;
+        }
+        long count = 1;
+        try {
+            for (Picture picture : dbList) {
+                String pictureName = nameRule.replaceAll("\\{序号}", String.valueOf(count++));
+                picture.setName(pictureName);
+            }
+        } catch (Exception e) {
+            log.error("名称解析错误", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "名称解析错误");
+        }
+    }
+
     private static String cosOriginKeyHandler(String webpKey, String thumbnailKey) {
         int i = thumbnailKey.indexOf(".");
         String fileExtension = thumbnailKey.substring(i);
@@ -670,6 +667,100 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(!url.contains(COS_PREFIX_URL), ErrorCode.PARAMS_ERROR, "cosKey 处理错误，url 错误");
         int i = url.indexOf(COS_PREFIX_URL);
         return url.substring(i + COS_PREFIX_URL.length());
+    }
+
+    /**
+     * 查询批量拉取历史表，返回指定关键词滑动分页的起始页码。
+     * 利用 keyword，查询数据库，如果不存在，first = 1 count = 35。
+     * 如果存在，从数据库中获取 first 和 count first += count。将结果写回数据库
+     *
+     * @param keyword 批量拉取图片的关键词
+     * @return 返回 keyword 对应的滑动分页起始页码
+     */
+    @Transactional
+    public int getScrollingPage(String keyword) {
+        int first = 1;
+        int count = 35;
+        int maxRetries = 3;
+        int retryCount = 0;
+        while (retryCount < maxRetries) {
+            QueryWrapper<Imagesearchhistory> historyQueryWrapper = new QueryWrapper<>();
+            historyQueryWrapper.eq("searchKeyword", keyword);
+            Imagesearchhistory selectedOne = historyMapper.selectOne(historyQueryWrapper);
+            if (selectedOne != null) {
+                count = selectedOne.getCount();
+                first = selectedOne.getFirst() + count;
+            }
+            selectedOne = ObjUtil.isNull(selectedOne) ? new Imagesearchhistory() : selectedOne;
+            selectedOne.setCount(count);
+            selectedOne.setFirst(first);
+            selectedOne.setUpdatedAt(new Date());
+            selectedOne.setSearchKeyword(keyword);
+            boolean success = historyService.saveOrUpdate(selectedOne); // 乐观锁
+            if (!success) {
+                retryCount++;
+                continue;
+            } else {
+                return first;
+            }
+        }
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取滑动分页页码失败");
+    }
+
+    /**
+     * 将数据万象返回的图片信息封装成 Picture 对象
+     *
+     * @param picName             批量抓取时，管理员设置的别名
+     * @param user                当前登录用户
+     * @param uploadPictureResult 数据万象返回的图片信息
+     * @param pictureId           图片id
+     * @return 返回 Picture 对象
+     */
+    private static Picture getPicture(String picName, User user, UploadPictureResult uploadPictureResult, Long pictureId) {
+        Picture picture = new Picture();
+        picture.setUrl(uploadPictureResult.getUrl());
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
+        if (StrUtil.isNotBlank(picName)) {
+            picture.setName(picName);
+        } else {
+            picture.setName(uploadPictureResult.getPicName());
+        }
+        picture.setPicSize(uploadPictureResult.getPicSize());
+        picture.setPicWidth(uploadPictureResult.getPicWidth());
+        picture.setPicHeight(uploadPictureResult.getPicHeight());
+        picture.setPicScale(uploadPictureResult.getPicScale());
+        picture.setPicFormat(uploadPictureResult.getPicFormat());
+        picture.setUserId(user.getId());
+        if (pictureId != null) {
+            picture.setId(pictureId);
+            picture.setEditTime(new Date());
+        }
+        return picture;
+    }
+
+    /**
+     * cache-aside 多级缓存架构。同时实现 hotkey 监控。
+     *
+     * @param id picture id
+     * @return 返回去敏后数据 pictureVO
+     */
+    @Override
+    @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id", sync = true)
+    public PictureVO getPictureVOById(long id, HttpServletRequest request) {
+        log.error("缓存失效！");
+        if (!pictureBloomFilter.contains(String.valueOf(id))) {
+            return null;
+        }
+        Picture picture = this.getById(id);
+        if (picture == null) {
+            return null;
+        }
+        Long spaceId = picture.getSpaceId();
+        if (spaceId != null) {
+            User loginUser = userService.getLoginUser(request);
+            checkPictureAuth(loginUser, picture);
+        }
+        return getPictureVO(picture);
     }
 }
 

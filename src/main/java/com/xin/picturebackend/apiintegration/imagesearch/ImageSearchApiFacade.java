@@ -1,12 +1,12 @@
-package com.xin.picturebackend.imagesearch;
+package com.xin.picturebackend.apiintegration.imagesearch;
 
-import com.xin.picturebackend.imagesearch.model.ImageSearchResult;
+import com.xin.picturebackend.apiintegration.imagesearch.model.ImageSearchResult;
 
 import java.util.List;
 
-import static com.xin.picturebackend.imagesearch.sub.GetImagePageUrlApi.getImagePageUrl;
-import static com.xin.picturebackend.imagesearch.sub.GetSimilarPictureListApi.getSimilarPictureList;
-import static com.xin.picturebackend.imagesearch.sub.GetSimilarPictureListUrlApi.getSimilarPictureListUrl;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetImagePageUrlApi.getImagePageUrl;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetSimilarPictureListApi.getSimilarPictureList;
+import static com.xin.picturebackend.apiintegration.imagesearch.sub.GetSimilarPictureListUrlApi.getSimilarPictureListUrl;
 
 /**
  *

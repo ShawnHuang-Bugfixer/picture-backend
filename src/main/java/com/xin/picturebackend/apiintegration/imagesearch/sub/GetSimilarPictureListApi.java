@@ -1,11 +1,10 @@
-package com.xin.picturebackend.imagesearch.sub;
+package com.xin.picturebackend.apiintegration.imagesearch.sub;
 
-import cn.hutool.json.JSONObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
-import com.xin.picturebackend.imagesearch.model.ImageSearchResult;
+import com.xin.picturebackend.apiintegration.imagesearch.model.ImageSearchResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;

@@ -1,4 +1,4 @@
-package com.xin.picturebackend.imagesearch.sub;
+package com.xin.picturebackend.apiintegration.imagesearch.sub;
 
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
