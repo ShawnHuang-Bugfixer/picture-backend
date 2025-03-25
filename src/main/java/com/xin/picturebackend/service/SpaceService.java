@@ -2,6 +2,8 @@ package com.xin.picturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.xin.picturebackend.model.dto.picture.CreatePictureOutPaintingTaskRequest;
 import com.xin.picturebackend.model.dto.space.SpaceAddRequest;
 import com.xin.picturebackend.model.dto.space.SpaceQueryRequest;
 import com.xin.picturebackend.model.dto.space.SpaceUpdateRequest;
@@ -50,4 +52,5 @@ public interface SpaceService extends IService<Space> {
     void fillSpace(Space space);
 
     long addSpace(SpaceAddRequest spaceAddRequest, User loginUser);
+
 }

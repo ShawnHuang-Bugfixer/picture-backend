@@ -21,9 +21,9 @@ public class ImageSearchApiFacade {
     public static List<ImageSearchResult> searchImage(String imageUrl) {
         String imagePageUrl = getImagePageUrl(imageUrl);
         String similarPictureListUrl = getSimilarPictureListUrl(imagePageUrl);
-        System.out.println("相似图片列表 URL: " + similarPictureListUrl);
+//        System.out.println("相似图片列表 URL: " + similarPictureListUrl);
         List<ImageSearchResult> similarPictureList = getSimilarPictureList(similarPictureListUrl);
-        similarPictureList.forEach(System.out::println);
+//        similarPictureList.forEach(System.out::println);
         return similarPictureList;
     }
 

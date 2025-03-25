@@ -6,3 +6,7 @@ cos:
     secretKey: REMOVED_SECRET_KEY
     region: ap-chengdu
     bucket: huang-picture-1345225028
+
+# aLiYun AI
+aliYunAi:
+  apiKey: REMOVED_API_KEY

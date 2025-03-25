@@ -2,6 +2,7 @@ package com.xin.picturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.model.dto.file.UploadPictureResult;
 import com.xin.picturebackend.model.dto.picture.*;
@@ -61,6 +62,8 @@ public interface PictureService extends IService<Picture> {
     List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser);
 
     void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser);
+
+    CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 
     PictureVO getPictureVOById(long id, HttpServletRequest request);
 
