@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAspectJAutoProxy(exposeProxy = true) // 获取代理对象
 @EnableScheduling
 @EnableAsync
+
 public class PictureBackendApplication {
 
     public static void main(String[] args) {
