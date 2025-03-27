@@ -29,6 +29,7 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/test")
 @Slf4j
+@Deprecated
 public class TestFileTransController {
     @Resource
     private CosManager cosManager;

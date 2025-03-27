@@ -2,6 +2,7 @@ package com.xin.picturebackend.model.dto.space;
 
 import lombok.Data;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -22,5 +23,11 @@ public class SpaceAddRequest implements Serializable {
      */
     private Integer spaceLevel;
 
+    /**
+     * 空间类型：0-私有 1-团队
+     */
+    private Integer spaceType;
+
+    @Serial
     private static final long serialVersionUID = 1L;
 }

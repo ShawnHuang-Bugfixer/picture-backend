@@ -4,10 +4,12 @@ import com.xin.picturebackend.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * fixme @EqualsAndHashCode(callSuper = true) 何用?
+ *
  * @author 黄兴鑫
  * @since 2025/3/20 11:32
  */
@@ -35,6 +37,12 @@ public class SpaceQueryRequest extends PageRequest implements Serializable {
      */
     private Integer spaceLevel;
 
+    /**
+     * 空间类型：0-私有 1-团队
+     */
+    private Integer spaceType;
+
+    @Serial
     private static final long serialVersionUID = 1L;
 }
 

@@ -10,16 +10,22 @@ import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.space.*;
 import com.xin.picturebackend.model.entity.Space;
+import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
+import com.xin.picturebackend.model.enums.RoleEnum;
 import com.xin.picturebackend.model.enums.SpaceLevelEnum;
+import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.SpaceVO;
 import com.xin.picturebackend.model.vo.UserVO;
 import com.xin.picturebackend.service.SpaceService;
 import com.xin.picturebackend.mapper.SpaceMapper;
+import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -48,6 +54,10 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     @Resource
     private TransactionTemplate transactionTemplate;
 
+    @Resource
+    @Lazy
+    private SpaceUserService spaceUserService;
+
     @Override
     public QueryWrapper<Space> getQueryWrapper(SpaceQueryRequest spaceQueryRequest) {
         // 参数校验
@@ -60,7 +70,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Integer spaceLevel = spaceQueryRequest.getSpaceLevel();
         String sortField = spaceQueryRequest.getSortField();
         String sortOrder = spaceQueryRequest.getSortOrder();
+        Integer spaceType = spaceQueryRequest.getSpaceType();
         // 拼接查询条件
+        queryWrapper.eq(ObjUtil.isNotEmpty(spaceType), "spaceType", spaceType);
         queryWrapper.eq(ObjUtil.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjUtil.isNotEmpty(userId), "userId", userId);
         queryWrapper.like(StrUtil.isNotBlank(spaceName), "spaceName", spaceName);
@@ -107,6 +119,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     @Override
     public void validSpace(Space space, boolean add) {
         ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(space.getSpaceType() == null, ErrorCode.PARAMS_ERROR, "space 类别为 null");
         // 从对象中取值
         String spaceName = space.getSpaceName();
         Integer spaceLevel = space.getSpaceLevel();
@@ -164,6 +177,11 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         return getSpaceVOPage(spacePage);
     }
 
+    /**
+     * 根据空间级别填充最大容量和最大数量
+     *
+     * @param space 空间对象
+     */
     @Override
     public void fillSpace(Space space) {
         SpaceLevelEnum spaceLevelEnum = SpaceLevelEnum.getEnumByValue(space.getSpaceLevel());
@@ -190,6 +208,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         if (spaceAddRequest.getSpaceLevel() == null) {
             space.setSpaceLevel(SpaceLevelEnum.COMMON.getValue());
         }
+        if (spaceAddRequest.getSpaceType() == null) {
+            space.setSpaceType(SpaceTypeEnum.PRIVATE.getValue());
+        }
         fillSpace(space);
         validSpace(space, true);
         Long id = loginUser.getId();
@@ -210,15 +231,27 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 // fixme 研究这里为什么要加事务？？
                 newSpaceId = transactionTemplate.execute(status -> {
                     // 查询数据库，检查是否已存在未删除的空间
-                    Space dbSpace = this.lambdaQuery().eq(Space::getUserId, id).one();
+                    Space dbSpace = this.lambdaQuery()
+                            .eq(Space::getUserId, id)
+                            .eq(Space::getSpaceType, spaceAddRequest.getSpaceType())
+                            .one();
                     if (dbSpace != null && dbSpace.getIsDelete() == 0) {
-                        throw new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户只允许创建一个私有空间");
+                        throw new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户每类空间只能创建一个");
                     }
 
                     // 保存空间信息
                     boolean save = save(space);
                     if (!save) {
                         throw new BusinessException(ErrorCode.OPERATION_ERROR);
+                    }
+                    // 新增团队空间，设置创建者为团队空间管理员
+                    if (spaceAddRequest.getSpaceType() == SpaceTypeEnum.TEAM.getValue()) {
+                        SpaceUser spaceUser = new SpaceUser();
+                        spaceUser.setSpaceId(space.getId());
+                        spaceUser.setUserId(id);
+                        spaceUser.setSpaceRole(RoleEnum.TEAM_SPACE_OWNER.getValue());
+                        boolean result = spaceUserService.save(spaceUser);
+                        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建团队空间管理员失败");
                     }
                     return space.getId();
                 });

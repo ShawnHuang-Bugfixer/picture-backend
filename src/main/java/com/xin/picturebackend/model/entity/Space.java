@@ -4,14 +4,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import java.util.Date;
+
 import lombok.Data;
 
 /**
  * 空间
+ *
  * @TableName space
  */
-@TableName(value ="space")
+@TableName(value = "space")
 @Data
 public class Space {
     /**
@@ -69,6 +72,11 @@ public class Space {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 空间类型：0-私有 1-团队
+     */
+    private Integer spaceType;
 
     /**
      * 是否删除
