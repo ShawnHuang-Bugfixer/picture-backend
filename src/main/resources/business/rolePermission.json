@@ -1,0 +1,62 @@
+{
+  "system-admin" : {
+    "roleName" : "系统管理员",
+    "permissions" : [
+      "public.view.image",
+      "public.upload.image",
+      "public.modify.image",
+      "public.delete.image",
+      "admin.update.image",
+      "admin.analyze.permissions",
+      "admin.user.manage"
+    ]
+  },
+  "public-space-owner" : {
+    "roleName" : "公共空间拥有者",
+    "permissions" : [
+      "public.view.image",
+      "public.upload.image"
+    ]
+  },
+  "public-space-picture-owner" : {
+    "roleName" : "公共空间图片拥有者",
+    "permissions" : [
+      "public.modify.image",
+      "public.delete.image"
+    ]
+  },
+  "private-space-owner" : {
+    "roleName" : "私人空间拥有者",
+    "permissions" : [
+      "private.view.image",
+      "private.upload.image",
+      "private.modify.image",
+      "private.delete.image",
+      "private.analyze.permissions"
+    ]
+  },
+  "viewer" : {
+    "roleName" : "团队空间浏览者",
+    "permissions" : [ "team.view.image" ]
+  },
+  "editor" : {
+    "roleName" : "团队空间编辑者",
+    "permissions" : [
+      "team.view.image",
+      "team.upload.image",
+      "team.modify.image",
+      "team.delete.image"
+    ]
+  },
+  "admin" : {
+    "roleName" : "团队空间拥有者",
+    "permissions" : [
+      "team.view.image",
+      "team.upload.image",
+      "team.modify.image",
+      "team.delete.image",
+      "team.manage.members",
+      "team.analyze.permissions"
+    ]
+  }
+}

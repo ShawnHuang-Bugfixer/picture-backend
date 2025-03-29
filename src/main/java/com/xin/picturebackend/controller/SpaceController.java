@@ -1,5 +1,6 @@
 package com.xin.picturebackend.controller;
 
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
@@ -36,8 +37,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- *
- *
  * @author 黄兴鑫
  * @since 2025/3/20 14:49
  */
@@ -84,8 +83,10 @@ public class SpaceController {
         List<Long> list = pictureService.getBaseMapper().selectObjs(pictureQueryWrapper).stream()
                 .map(id -> Long.parseLong(id.toString()))
                 .toList();
-        boolean picResult = pictureService.removeByIds(list);
-        ThrowUtils.throwIf(!picResult, ErrorCode.OPERATION_ERROR, "删除此空间图片失败");
+        if (CollUtil.isNotEmpty(list)) {
+            boolean picResult = pictureService.removeByIds(list);
+            ThrowUtils.throwIf(!picResult, ErrorCode.OPERATION_ERROR, "删除此空间图片失败");
+        }
         // 如果是团队空间，删除关联表中相关信息
         if (Objects.equals(SpaceTypeEnum.getEnumByValue(oldSpace.getSpaceLevel()), SpaceTypeEnum.TEAM)) {
             QueryWrapper<SpaceUser> spaceUserQueryWrapper = new QueryWrapper<>();
@@ -93,6 +94,7 @@ public class SpaceController {
             boolean result = spaceUserService.getBaseMapper().delete(spaceUserQueryWrapper) > 0;
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除空间用户失败");
         }
+        // 处理逻辑删除
         boolean result = spaceService.removeById(spaceId);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "删除空间失败");
         // 删除 cos

@@ -22,12 +22,15 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
  * 将一段时间内访问次数超过指定阈值的 key 视为 hotKey 并写入 caffeine
+ * fixme
+ *      1. 可能导致 oop 的发生，需要优化
  *
  * @author 黄兴鑫
  * @since 2025/3/15 15:17
@@ -40,7 +43,9 @@ public class HotKeyAspect {
 
     private static final long HOT_THRESHOLD = 100; // 5s 内 key 出现 100 次视为 hotkey
     private static final long MAX_AGE_MINUTES = 30;// 计数器中 key 最大存活时间
-    private final ConcurrentMap<String, Counter> keyCounter = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Counter> keyCounter = new ConcurrentHashMap<>();
+    private static final ConcurrentLinkedDeque<String> accessQueue = new ConcurrentLinkedDeque<>();
+    private static final int MAX_CAPACITY = 10000;
     @Resource
     private CacheManager caffeineCacheManager;
     @Resource
@@ -111,11 +116,23 @@ public class HotKeyAspect {
         String realKey = expression.getValue(context, String.class);
 
         // 更新计数器和访问时间
-        keyCounter.computeIfAbsent(realKey, (m) -> new Counter(cacheNames)).increment();
-
+        keyCounter.computeIfAbsent(realKey, (m) -> new Counter(cacheNames)).increment(realKey);
+        // fixme 大量低频访问的 key 可能导致 oop
         return joinPoint.proceed();
     }
 
+    private static void updateAccess(String key) {
+        accessQueue.remove(key); // 移除旧位置（如果存在）
+        accessQueue.addLast(key); // 添加到队列尾部
+
+        // 如果超过容量，移除最久未使用的
+        if (accessQueue.size() > MAX_CAPACITY) {
+            String oldestKey = accessQueue.pollFirst();
+            if (oldestKey != null) {
+                keyCounter.remove(oldestKey);
+            }
+        }
+    }
 
     @Getter
     static class Counter {
@@ -123,9 +140,10 @@ public class HotKeyAspect {
         private volatile long lastAccessTime = System.currentTimeMillis();
         private String[] cacheNames;
 
-        public void increment() {
+        public void increment(String key) {
             adder.increment();
             lastAccessTime = System.currentTimeMillis();
+            updateAccess(key);
         }
 
         public Counter(String[] cacheNames) {

@@ -10,8 +10,9 @@ import java.util.stream.Collectors;
 public enum RoleEnum {
 
     SYSTEM_ADMIN("系统管理员", "system-admin"),
-    PUBLIC_SPACE_OWNER("公共空间图片拥有者", "public-space-picture-owner"),
+    PUBLIC_SPACE_PICTURE_OWNER("公共空间图片拥有者", "public-space-picture-owner"),
     PRIVATE_SPACE_OWNER("私人空间拥有者", "private-space-owner"),
+    PUBLIC_SPACE_OWNER("公共空间拥有者", "public-space-owner"),
     TEAM_SPACE_VIEWER("团队空间浏览者", "viewer"),
     TEAM_SPACE_EDITOR("团队空间编辑者", "editor"),
     TEAM_SPACE_OWNER("团队空间拥有者", "admin");

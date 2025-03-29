@@ -1,5 +1,6 @@
 package com.xin.picturebackend.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
@@ -81,6 +82,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名或密码错误！");
         }
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        StpUtil.login(user.getId());
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginVO(user);
     }
 

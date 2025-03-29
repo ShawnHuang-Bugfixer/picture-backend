@@ -1,5 +1,6 @@
 package com.xin.picturebackend.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -199,7 +200,8 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
 
     @Override
     public long addSpace(SpaceAddRequest spaceAddRequest, User loginUser) {
-        Space space = new Space();
+        Space space;
+        space = new Space();
         BeanUtils.copyProperties(spaceAddRequest, space);
         // 默认值填充
         if (StrUtil.isBlank(spaceAddRequest.getSpaceName())) {
@@ -229,6 +231,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
 
             if (locked) {
                 // fixme 研究这里为什么要加事务？？
+                final Space finalSpace = space;
                 newSpaceId = transactionTemplate.execute(status -> {
                     // 查询数据库，检查是否已存在未删除的空间
                     Space dbSpace = this.lambdaQuery()
@@ -240,20 +243,20 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                     }
 
                     // 保存空间信息
-                    boolean save = save(space);
+                    boolean save = save(finalSpace);
                     if (!save) {
                         throw new BusinessException(ErrorCode.OPERATION_ERROR);
                     }
                     // 新增团队空间，设置创建者为团队空间管理员
                     if (spaceAddRequest.getSpaceType() == SpaceTypeEnum.TEAM.getValue()) {
                         SpaceUser spaceUser = new SpaceUser();
-                        spaceUser.setSpaceId(space.getId());
+                        spaceUser.setSpaceId(finalSpace.getId());
                         spaceUser.setUserId(id);
                         spaceUser.setSpaceRole(RoleEnum.TEAM_SPACE_OWNER.getValue());
                         boolean result = spaceUserService.save(spaceUser);
                         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建团队空间管理员失败");
                     }
-                    return space.getId();
+                    return finalSpace.getId();
                 });
             } else {
                 // 获取锁失败，抛出异常或进行其他处理

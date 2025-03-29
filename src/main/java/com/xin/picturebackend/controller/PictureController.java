@@ -1,5 +1,7 @@
 package com.xin.picturebackend.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaMode;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -57,7 +59,8 @@ public class PictureController {
      * fixme: 请求头multipart/form-data, knife4j 将参数列表解析为了 String 类型，需要手动转化json 为实体。
      */
     @PostMapping("/upload")
-//    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(value = {"public.upload.image", "private.upload.image", "team.upload.image"}, mode = SaMode.OR)
+    // fixme 这里使用注解鉴权无法区分用户角色，应该使用编程式鉴权
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
             PictureUploadRequest pictureUploadRequest,
@@ -97,6 +100,7 @@ public class PictureController {
      * 删除图片
      *
      */
+    @SaCheckPermission("public.delete.image")
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         pictureService.deletePicture(deleteRequest, request);
@@ -106,6 +110,7 @@ public class PictureController {
     /**
      * 更新图片（仅管理员可用）
      */
+    @SaCheckPermission("admin.update.image")
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
