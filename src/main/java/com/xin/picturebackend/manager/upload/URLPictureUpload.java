@@ -36,11 +36,13 @@ public class URLPictureUpload extends PictureUploadTemplate<String>{
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "资源地址格式错误！");
         }
         // 2. 校验资源类型
-        try (HttpResponse response = HttpUtil.createRequest(Method.HEAD, resourceSource)
-                .setConnectionTimeout(1000)  // 连接超时 1 秒
-                .setReadTimeout(1000)         // 读取超时 1 秒
+        try (HttpResponse response = HttpUtil.createRequest(Method.GET, resourceSource)
+                .setConnectionTimeout(1000)
+                .setReadTimeout(1000)
+                .header("Range", "bytes=0-0") // 只请求第一个字节，避免下载完整文件
                 .execute()) {
-            if (response.getStatus() != HttpStatus.HTTP_OK) {
+            if (response.getStatus() != HttpStatus.HTTP_OK &&
+                    response.getStatus() != HttpStatus.HTTP_PARTIAL) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持 Head 请求或资源地址错误!");
             }
             String contentType = response.header("Content-Type");

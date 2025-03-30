@@ -1,5 +1,6 @@
 package com.xin.picturebackend.service.impl;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
@@ -94,10 +95,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         LoginUserVO loginUserVO = new LoginUserVO();
         BeanUtils.copyProperties(user, loginUserVO);
+        if (loginUserVO.getUserRole().equals("system-admin")) {
+            loginUserVO.setUserRole("admin");
+        }
         return loginUserVO;
     }
 
     @Override
+    @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
         User loggedInUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         ThrowUtils.throwIf(loggedInUser == null || loggedInUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
@@ -137,6 +142,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
         ThrowUtils.throwIf(attribute == null, ErrorCode.NOT_LOGIN_ERROR);
         request.getSession().removeAttribute(USER_LOGIN_STATE);
+        StpUtil.logout();
         return true;
     }
 

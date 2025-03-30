@@ -13,7 +13,8 @@ import com.xin.picturebackend.model.dto.spaceuser.SpaceUserQueryRequest;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.RoleEnum;
+import com.xin.picturebackend.auth.enums.RoleEnum;
+import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.SpaceUserVO;
 import com.xin.picturebackend.model.vo.SpaceVO;
 import com.xin.picturebackend.model.vo.UserVO;
@@ -50,7 +51,10 @@ public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser
     public long addSpaceUser(SpaceUserAddRequest spaceUserAddRequest) {
         // 参数校验
         ThrowUtils.throwIf(spaceUserAddRequest == null, ErrorCode.PARAMS_ERROR);
-        if (spaceUserAddRequest.getSpaceRole().equals(RoleEnum.TEAM_SPACE_OWNER.getValue())) {
+        Long spaceId = spaceUserAddRequest.getSpaceId();
+        Long userId = spaceUserAddRequest.getUserId();
+        String spaceRole = spaceUserAddRequest.getSpaceRole();
+        if (ObjUtil.isNotNull(spaceRole) && spaceRole.equals(RoleEnum.TEAM_SPACE_OWNER.getValue())) {
             throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "空间管理员唯一");
         }
         SpaceUser spaceUser = new SpaceUser();
@@ -74,6 +78,7 @@ public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser
             ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
             Space space = spaceService.getById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+            ThrowUtils.throwIf(space.getSpaceType() == SpaceTypeEnum.PRIVATE.getValue(), ErrorCode.PARAMS_ERROR, "私人空间无法添加用户");
         }
         // 校验空间角色
         String spaceRole = spaceUser.getSpaceRole();

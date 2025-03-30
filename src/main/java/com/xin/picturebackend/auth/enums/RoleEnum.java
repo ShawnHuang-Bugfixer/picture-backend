@@ -1,4 +1,4 @@
-package com.xin.picturebackend.model.enums;
+package com.xin.picturebackend.auth.enums;
 
 import lombok.Getter;
 import cn.hutool.core.util.ObjUtil;

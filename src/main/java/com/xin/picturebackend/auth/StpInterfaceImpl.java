@@ -12,7 +12,7 @@ import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.RoleEnum;
+import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.SpaceService;
 import com.xin.picturebackend.service.SpaceUserService;
@@ -68,12 +68,41 @@ public class StpInterfaceImpl implements StpInterface {
             log.error("系统管理员：{}", userId);
             permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.SYSTEM_ADMIN.getValue()));
         }
-        // 2. pictureId 在 picture 表中有记录，且 pictureId 属于 userId，图片拥有者
+        // 2. pictureId 在 picture 表中有记录
         if (ObjUtil.isNotNull(pictureId)) {
             Picture dbPicture = pictureService.getById(pictureId);
-            if (ObjUtil.isNotNull(dbPicture) && dbPicture.getUserId().equals(userId)) {
-                log.error("图片拥有者" + "图片id：{}", pictureId);
-                permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PUBLIC_SPACE_PICTURE_OWNER.getValue()));
+            if (ObjUtil.isNotNull(dbPicture)) {
+                Long dbPictureSpaceId = dbPicture.getSpaceId();
+                if (ObjUtil.isNull(dbPictureSpaceId) && dbPicture.getUserId().equals(userId)) {
+                    // 2.1 如果图片属于公有空间，即 spaceId == null，且 pictureId 属于 userId，公共图片拥有者
+                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PUBLIC_SPACE_PICTURE_OWNER.getValue()));
+                } else {
+                    // 2.2 如果图片不属于公有空间，即 spaceId ！= null
+                    Space dbSpace = spaceService.getById(dbPictureSpaceId);
+                    if (ObjUtil.isNotNull(dbSpace)) {
+                        Integer spaceType = dbSpace.getSpaceType();
+                        if (spaceType.equals(0)) {
+                            // 2.2.1 空间类型为私人空间
+                            //       spaceId 属于 userId，私人空间拥有者
+                            if (dbSpace.getUserId().equals(userId)) {
+                                log.error("私人空间拥有者" + "空间id: {}", dbPictureSpaceId);
+                                permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PRIVATE_SPACE_OWNER.getValue()));
+                            }
+                        }
+                        if (spaceType.equals(1)) {
+                            // 2.2.2 空间类型为团队空间
+                            //      查询 space_user 表，根据 spaceId 和 userId 查询 spaceRole 有记录，赋予对应角色
+                            QueryWrapper<SpaceUser> spaceUserQueryWrapper = new QueryWrapper<>();
+                            spaceUserQueryWrapper.select("spaceRole")
+                                    .eq("spaceId", dbPictureSpaceId)
+                                    .eq("userId", userId);
+                            SpaceUser dbSpaceUser = spaceUserService.getOne(spaceUserQueryWrapper);
+                            if (ObjUtil.isNotNull(dbSpaceUser)) {
+                                addPermissionsBySpaceUser(permissions, dbSpaceUser);
+                            }
+                        }
+                    }
+                }
             }
         }
         // 3. spaceId 在 space 表中有记录
@@ -107,6 +136,13 @@ public class StpInterfaceImpl implements StpInterface {
         //       * spaceRole == editor 团队空间编辑者
         if (ObjUtil.isNotNull(spaceUserId)) {
             SpaceUser dbSpaceuser = spaceUserService.getById(spaceUserId);
+            // fixme 根据 spaceUserId 查询 spaceId, 根据 spaceId 和 userId 查询 spac_user 表，获取 userid 的权限
+            Long teamSpaceId = dbSpaceuser.getSpaceId();
+            QueryWrapper<SpaceUser> spaceUserQueryWrapper = new QueryWrapper<>();
+            spaceUserQueryWrapper.select("spaceRole")
+                    .eq("spaceId", teamSpaceId)
+                    .eq("userId", userId);
+            dbSpaceuser = spaceUserService.getOne(spaceUserQueryWrapper);
             addPermissionsBySpaceUser(permissions, dbSpaceuser);
         }
         permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PUBLIC_SPACE_OWNER.getValue()));

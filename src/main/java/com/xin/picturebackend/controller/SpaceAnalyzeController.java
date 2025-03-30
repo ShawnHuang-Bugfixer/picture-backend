@@ -1,6 +1,8 @@
 package com.xin.picturebackend.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.xin.picturebackend.annotation.AuthCheck;
+import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.ResultUtils;
 import com.xin.picturebackend.constant.UserConstant;
@@ -90,7 +92,7 @@ public class SpaceAnalyzeController {
     }
 
     @PostMapping("/rank")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<List<Space>> getSpaceRankAnalyze(
             @RequestBody SpaceRankAnalyzeRequest spaceRankAnalyzeRequest,
             HttpServletRequest request

@@ -74,7 +74,8 @@ public interface PictureService extends IService<Picture> {
     @Async
     void clearPictureFile(Picture oldPicture);
 
-    void checkPictureAuth(User loginUser, Picture picture);
+    @Deprecated
+    default void checkPictureAuth(User loginUser, Picture picture) {};
 
     void deletePicture(DeleteRequest deleteRequest, HttpServletRequest request);
 

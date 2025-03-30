@@ -7,8 +7,10 @@
       "public.modify.image",
       "public.delete.image",
       "admin.update.image",
+      "admin.batchUpload.image",
       "admin.analyze.permissions",
-      "admin.user.manage"
+      "admin.user.manage",
+      "*.analyze.permissions"
     ]
   },
   "public-space-owner" : {

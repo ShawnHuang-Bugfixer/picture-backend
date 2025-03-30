@@ -1,9 +1,12 @@
 package com.xin.picturebackend.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
+import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
@@ -48,9 +51,11 @@ public class SpaceController {
 
     @Resource
     private UserService userService;
-    @Autowired
+
+    @Resource
     private PictureService pictureService;
-    @Autowired
+
+    @Resource
     private SpaceUserService spaceUserService;
 
     @PostMapping("/add")
@@ -74,9 +79,7 @@ public class SpaceController {
         Space oldSpace = spaceService.getById(spaceId);
         ThrowUtils.throwIf(oldSpace == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅本人或管理员可删除
-        if (!oldSpace.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        StpUtil.checkPermissionOr(PermissionConstants.PRIVATE_ANALYZE_PERMISSIONS, PermissionConstants.ADMIN_ANALYZE_PERMISSIONS, PermissionConstants.TEAM_ANALYZE_PERMISSIONS);
         // 同时删除空间中图片
         QueryWrapper<Picture> pictureQueryWrapper = new QueryWrapper<>();
         pictureQueryWrapper.eq("spaceId", spaceId);
@@ -102,10 +105,10 @@ public class SpaceController {
     }
 
     /**
-     * 更新图片（仅管理员可用）
+     * 更新空间（仅管理员可用）
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Boolean> updateSpace(@RequestBody SpaceUpdateRequest spaceUpdateRequest, HttpServletRequest request) {
         if (spaceUpdateRequest == null || spaceUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -118,7 +121,7 @@ public class SpaceController {
      * 根据 id 获取图片（仅管理员可用）
      */
     @GetMapping("/get")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Space> getSpaceById(long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
@@ -143,7 +146,7 @@ public class SpaceController {
      * 分页获取图片列表（仅管理员可用）
      */
     @PostMapping("/list/page")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Page<Space>> listSpaceByPage(@RequestBody SpaceQueryRequest spaceQueryRequest) {
         long current = spaceQueryRequest.getCurrent();
         long size = spaceQueryRequest.getPageSize();
@@ -183,9 +186,7 @@ public class SpaceController {
         Space oldSpace = spaceService.getById(id);
         ThrowUtils.throwIf(oldSpace == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅本人或管理员可编辑
-        if (!oldSpace.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
+        StpUtil.checkPermissionOr(PermissionConstants.PRIVATE_ANALYZE_PERMISSIONS, PermissionConstants.ADMIN_ANALYZE_PERMISSIONS, PermissionConstants.TEAM_ANALYZE_PERMISSIONS);
         // 操作数据库
         boolean result = spaceService.updateById(space);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

@@ -53,5 +53,6 @@ public interface SpaceService extends IService<Space> {
 
     long addSpace(SpaceAddRequest spaceAddRequest, User loginUser);
 
+    @Deprecated
     void checkSpaceAuth(User loginUser, Space space);
 }

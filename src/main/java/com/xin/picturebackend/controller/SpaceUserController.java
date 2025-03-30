@@ -1,6 +1,8 @@
 package com.xin.picturebackend.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
@@ -12,7 +14,7 @@ import com.xin.picturebackend.model.dto.spaceuser.SpaceUserEditRequest;
 import com.xin.picturebackend.model.dto.spaceuser.SpaceUserQueryRequest;
 import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.RoleEnum;
+import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.model.vo.SpaceUserVO;
 import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
@@ -42,6 +44,7 @@ public class SpaceUserController {
     private UserService userService;
 
     @PostMapping("/add")
+    @SaCheckPermission(PermissionConstants.TEAM_MANAGE_MEMBERS)
     public BaseResponse<Long> addSpaceUser(@RequestBody SpaceUserAddRequest spaceUserAddRequest) {
         if (spaceUserAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -51,6 +54,7 @@ public class SpaceUserController {
     }
 
     @PostMapping("/delete")
+    @SaCheckPermission(PermissionConstants.TEAM_MANAGE_MEMBERS)
     public BaseResponse<Boolean> deleteSpaceUser(@RequestBody DeleteRequest deleteRequest) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -66,6 +70,7 @@ public class SpaceUserController {
     }
 
     @PostMapping("/get")
+    @SaCheckPermission(PermissionConstants.TEAM_MANAGE_MEMBERS)
     public BaseResponse<SpaceUser> getSpaceUser(@RequestBody SpaceUserQueryRequest spaceUserQueryRequest) {
         ThrowUtils.throwIf(spaceUserQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = spaceUserQueryRequest.getId();
@@ -79,6 +84,7 @@ public class SpaceUserController {
     }
 
     @PostMapping("/list")
+    @SaCheckPermission(PermissionConstants.TEAM_MANAGE_MEMBERS)
     public BaseResponse<List<SpaceUserVO>> listSpaceUser(@RequestBody SpaceUserQueryRequest spaceUserQueryRequest) {
         ThrowUtils.throwIf(spaceUserQueryRequest == null, ErrorCode.PARAMS_ERROR);
         QueryWrapper<SpaceUser> queryWrapper = spaceUserService.getQueryWrapper(spaceUserQueryRequest);
@@ -88,6 +94,7 @@ public class SpaceUserController {
     }
 
     @PostMapping("/edit")
+    @SaCheckPermission(PermissionConstants.TEAM_MANAGE_MEMBERS)
     public BaseResponse<Boolean> editSpaceUser(@RequestBody SpaceUserEditRequest spaceUserEditRequest) {
         if (spaceUserEditRequest == null || spaceUserEditRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);

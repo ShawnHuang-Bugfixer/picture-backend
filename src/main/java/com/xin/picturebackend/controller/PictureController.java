@@ -2,6 +2,7 @@ package com.xin.picturebackend.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -11,6 +12,8 @@ import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTas
 import com.xin.picturebackend.apiintegration.aliyunai.model.GetOutPaintingTaskResponse;
 import com.xin.picturebackend.apiintegration.imagesearch.ImageSearchApiFacade;
 import com.xin.picturebackend.apiintegration.imagesearch.model.ImageSearchResult;
+import com.xin.picturebackend.auth.AuthManager;
+import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
@@ -59,8 +62,6 @@ public class PictureController {
      * fixme: 请求头multipart/form-data, knife4j 将参数列表解析为了 String 类型，需要手动转化json 为实体。
      */
     @PostMapping("/upload")
-    @SaCheckPermission(value = {"public.upload.image", "private.upload.image", "team.upload.image"}, mode = SaMode.OR)
-    // fixme 这里使用注解鉴权无法区分用户角色，应该使用编程式鉴权
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
             PictureUploadRequest pictureUploadRequest,
@@ -84,7 +85,7 @@ public class PictureController {
     }
 
     @PostMapping("/upload/batch")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_BATCH_UPLOAD_IMAGE)
     public BaseResponse<Integer> uploadPictureByBatch(
             @RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest,
             HttpServletRequest request
@@ -96,11 +97,6 @@ public class PictureController {
     }
 
 
-    /**
-     * 删除图片
-     *
-     */
-    @SaCheckPermission("public.delete.image")
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         pictureService.deletePicture(deleteRequest, request);
@@ -110,9 +106,8 @@ public class PictureController {
     /**
      * 更新图片（仅管理员可用）
      */
-    @SaCheckPermission("admin.update.image")
+    @SaCheckPermission(PermissionConstants.ADMIN_UPDATE_IMAGE)
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
         pictureService.updatePicture(pictureUpdateRequest, request);
         return ResultUtils.success(true);
@@ -122,7 +117,7 @@ public class PictureController {
      * 根据 id 获取图片（仅管理员可用）
      */
     @GetMapping("/get")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Picture> getPictureById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
@@ -134,6 +129,7 @@ public class PictureController {
 
     /**
      * 根据 id 获取图片（封装类）
+     *
      */
     @GetMapping("/get/vo")
     public BaseResponse<PictureVO> getPictureVOById(long id, HttpServletRequest request) {
@@ -147,7 +143,7 @@ public class PictureController {
      * 分页获取图片列表（仅管理员可用）
      */
     @PostMapping("/list/page")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Page<Picture>> listPictureByPage(@RequestBody PictureQueryRequest pictureQueryRequest) {
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
@@ -186,7 +182,7 @@ public class PictureController {
     }
 
     @PostMapping("/review")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
     public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(pictureReviewRequest == null || pictureReviewRequest.getId() <= 0, ErrorCode.PARAMS_ERROR, "请求参数异常");
         User loginUser = userService.getLoginUser(request);
@@ -256,6 +252,4 @@ public class PictureController {
         GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
         return ResultUtils.success(task);
     }
-
-
 }

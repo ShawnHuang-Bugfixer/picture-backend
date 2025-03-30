@@ -1,11 +1,12 @@
 package com.xin.picturebackend.service.impl;
 
-import cn.hutool.core.collection.CollUtil;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xin.picturebackend.auth.AuthManager;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -13,7 +14,7 @@ import com.xin.picturebackend.model.dto.space.*;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.RoleEnum;
+import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.model.enums.SpaceLevelEnum;
 import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.SpaceVO;
@@ -58,6 +59,10 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     @Resource
     @Lazy
     private SpaceUserService spaceUserService;
+
+    @Resource
+    @Lazy
+    private AuthManager authManager;
 
     @Override
     public QueryWrapper<Space> getQueryWrapper(SpaceQueryRequest spaceQueryRequest) {
@@ -149,7 +154,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         if (space == null) {
             return null;
         }
-        return getSpaceVO(space);
+        SpaceVO spaceVO = getSpaceVO(space);
+        spaceVO.setPermissionList(authManager.permissionsAdapter(StpUtil.getPermissionList(), space, userService.getById(space.getUserId())));
+        return spaceVO;
     }
 
     @Override
@@ -218,7 +225,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Long id = loginUser.getId();
         space.setUserId(id);
         // 权限校验:管理员才能指定空间级别
-        if (SpaceLevelEnum.COMMON.getValue() != spaceAddRequest.getSpaceLevel() && !userService.isAdmin(loginUser)) {
+        if (SpaceLevelEnum.COMMON.getValue() != space.getSpaceType() && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限创建指定级别的空间");
         }
         // 保证用户私有空间唯一

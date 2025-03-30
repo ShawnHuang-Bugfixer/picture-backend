@@ -1,10 +1,12 @@
 package com.xin.picturebackend.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -12,6 +14,7 @@ import com.xin.picturebackend.model.dto.space.*;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.User;
+import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.*;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.SpaceAnalyzeService;
@@ -50,14 +53,19 @@ public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
         // 检查权限
         if (spaceAnalyzeRequest.isQueryAll() || spaceAnalyzeRequest.isQueryPublic()) {
             // 全空间分析或者公共图库权限校验：仅管理员可访问
-            ThrowUtils.throwIf(!userService.isAdmin(loginUser), ErrorCode.NO_AUTH_ERROR, "无权访问公共图库");
+            StpUtil.checkPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS);
         } else {
-            // 私有空间权限校验
+            // 非公共空间权限校验
             Long spaceId = spaceAnalyzeRequest.getSpaceId();
             ThrowUtils.throwIf(spaceId == null || spaceId <= 0, ErrorCode.PARAMS_ERROR);
             Space space = spaceService.getById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
-            spaceService.checkSpaceAuth(loginUser, space);
+            if (space.getSpaceType() == SpaceTypeEnum.PRIVATE.getValue()) {
+                StpUtil.checkPermission(PermissionConstants.PRIVATE_ANALYZE_PERMISSIONS);
+            }
+            if (space.getSpaceType() == SpaceTypeEnum.TEAM.getValue()) {
+                StpUtil.checkPermission(PermissionConstants.TEAM_ANALYZE_PERMISSIONS);
+            }
         }
     }
 

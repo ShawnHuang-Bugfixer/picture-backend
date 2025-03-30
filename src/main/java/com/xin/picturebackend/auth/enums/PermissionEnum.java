@@ -1,11 +1,7 @@
-package com.xin.picturebackend.model.enums;
+package com.xin.picturebackend.auth.enums;
 
 import lombok.Getter;
 import cn.hutool.core.util.ObjUtil;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -18,7 +14,9 @@ public enum PermissionEnum {
     // 全局权限
     ADMIN_UPDATE_IMAGE("管理员更新图片", "admin.update.image"),
     ADMIN_ANALYZE_PERMISSIONS("分析系统权限", "admin.analyze.permissions"),
+    ADMIN_BATCH_UPLOAD_IMAGE("管理员批量上传图片", "admin.batchUpload.image"),
     USER_MANAGE("用户管理权限", "admin.user.manage"),
+
 
     // 公共空间权限
     PUBLIC_VIEW_IMAGE("查看公共空间图片", "public.view.image"),
