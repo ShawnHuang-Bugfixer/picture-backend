@@ -14,6 +14,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.xin.picturebackend.apiintegration.com.pixabay.api.SearchPicturesAPI;
 import com.xin.picturebackend.auth.AuthManager;
 import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.DeleteRequest;
@@ -120,6 +121,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private SearchPicturesAPI searchPicturesAPI;
+
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
         ThrowUtils.throwIf(ObjUtil.hasNull(resourceSource, pictureUploadRequest, user), ErrorCode.PARAMS_ERROR);
@@ -142,7 +146,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                     // 私有空间，仅私有空间拥有者可操作
                     StpUtil.checkPermission(PermissionConstants.PRIVATE_UPLOAD_IMAGE);
                 }
-                if (dbSpace.getSpaceType() == SpaceTypeEnum.TEAM.getValue()){
+                if (dbSpace.getSpaceType() == SpaceTypeEnum.TEAM.getValue()) {
                     // 1.2.1 spaceType == Team 校验是否有团队上传图片权限
                     // 团队空间，要求有编辑权限
                     StpUtil.checkPermission(PermissionConstants.TEAM_UPLOAD_IMAGE);
@@ -166,7 +170,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                     // 私有空间，仅私有空间拥有者可操作
                     StpUtil.checkPermission(PermissionConstants.PRIVATE_MODIFY_IMAGE);
                 }
-                if (dbSpace.getSpaceType() == SpaceTypeEnum.TEAM.getValue()){
+                if (dbSpace.getSpaceType() == SpaceTypeEnum.TEAM.getValue()) {
                     // 2.2.1 spaceType == Team 校验是否有更新团队图片权限
                     // 团队空间，要求有编辑权限
                     StpUtil.checkPermission(PermissionConstants.TEAM_MODIFY_IMAGE);
@@ -218,7 +222,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             return true;
         });
         // 6.1 添加到布隆过滤器
-        if (executeResult != null && executeResult){
+        if (executeResult != null && executeResult) {
             pictureBloomFilter.add(picture.getId().toString());
             if (oldDbPicture != null) {
                 // 6.2 如果是更新，删除 cos 旧图片文件
@@ -382,15 +386,16 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    // fixme 重构，接入第三方 api，获取图片 url 集合
     @Override
-    public int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+    @Deprecated
+    public int uploadPictureByBatchFromBaidu(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
         // 1. 参数校验
         Integer paraCount = pictureUploadByBatchRequest.getCount(); // 最大拉取数量
         String searchText = pictureUploadByBatchRequest.getSearchText(); // 图片关键词
         ThrowUtils.throwIf(paraCount == null || StrUtil.isBlank(searchText), ErrorCode.PARAMS_ERROR, "参数错误");
         int successUploadCount = 0;
-        int first = applicationContext.getBean(PictureServiceImpl.class).getScrollingPage(searchText); //拿到动态代理对象后才能激活 @Transactional
+        int first = 1;
+//        first = applicationContext.getBean(PictureServiceImpl.class).getScrollingPage(searchText); //拿到动态代理对象后才能激活 @Transactional
         // 3. 利用 first 和 count 构造 url，从 bing 搜索引擎中获取图片 url 集合
         String fetchURL = String.format("https://cn.bing.com/images/async?q=%s&first=%s&count=%s&mmasync=1", searchText, first, "35");
         Document document;
@@ -430,12 +435,49 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 Thread.sleep((int) (Math.random() * 1000));
             }
         } catch (IOException e) {
-            log.error("网络请求失败: {}", fetchURL, e);
+            log.info("网络请求失败: {}", fetchURL, e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "网络请求超时");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("线程被中断", e);
+            log.info("线程被中断", e);
         }
+        return successUploadCount;
+    }
+
+    @Override
+    public int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        String searchText = pictureUploadByBatchRequest.getSearchText();
+        Integer count = pictureUploadByBatchRequest.getCount();
+        if (ObjectUtil.isNull(count)) {
+            count = 20;
+        }
+        if (count > 100) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "批量上传最大图片数量为 100");
+        }
+        String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+        int successUploadCount = 0;
+        int first = applicationContext.getBean(PictureServiceImpl.class).getScrollingPage(searchText, count);
+        if (StrUtil.isBlank(namePrefix)) {
+            namePrefix = searchText;
+        }
+        PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        pictureUploadRequest.setPicName(namePrefix + uuid.substring(0, 8));
+        List<String> urlList = searchPicturesAPI.searchPicturesUrls(searchText, first, count, "zh");
+        log.info("开始遍历上传 urlList = {}", urlList);
+        for (String url : urlList) {
+            try {
+                this.uploadPicture(url, pictureUploadRequest, loginUser);
+                Thread.sleep((int) (Math.random() * 500));
+                successUploadCount++;
+            } catch (BusinessException e) {
+                log.info("{} 上传失败, 原因 = {}", url, e.getMessage());
+                log.info("{} 上传失败", url);
+            } catch (InterruptedException e) {
+                log.info("线程被中断", e);
+            }
+        }
+        log.info("上传成功数量 = {}", successUploadCount);
         return successUploadCount;
     }
 
@@ -509,7 +551,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         this.clearPictureFile(oldPicture);
     }
 
-    // fixme 团队空间中执行该方法后，无法编辑该图片
     @Override
     @CacheEvict(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #pictureEditRequest.id")
     public void editPicture(PictureEditRequest pictureEditRequest, HttpServletRequest request) {
@@ -753,7 +794,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 picture.setName(pictureName);
             }
         } catch (Exception e) {
-            log.error("名称解析错误", e);
+            log.info("名称解析错误", e);
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "名称解析错误");
         }
     }
@@ -774,16 +815,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     /**
      * 查询批量拉取历史表，返回指定关键词滑动分页的起始页码。
-     * 利用 keyword，查询数据库，如果不存在，first = 1 count = 35。
-     * 如果存在，从数据库中获取 first 和 count first += count。将结果写回数据库
      *
      * @param keyword 批量拉取图片的关键词
      * @return 返回 keyword 对应的滑动分页起始页码
      */
     @Transactional
-    public int getScrollingPage(String keyword) {
+    public int getScrollingPage(String keyword, int paraCount) {
+        log.info("enter getScrollingPage,keyword {}, paraCount {}", keyword, paraCount);
         int first = 1;
-        int count = 35;
         int maxRetries = 3;
         int retryCount = 0;
         while (retryCount < maxRetries) {
@@ -791,11 +830,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             historyQueryWrapper.eq("searchKeyword", keyword);
             Imagesearchhistory selectedOne = historyMapper.selectOne(historyQueryWrapper);
             if (selectedOne != null) {
-                count = selectedOne.getCount();
-                first = selectedOne.getFirst() + count;
+                first = selectedOne.getFirst() + 1;
             }
             selectedOne = ObjUtil.isNull(selectedOne) ? new Imagesearchhistory() : selectedOne;
-            selectedOne.setCount(count);
+            selectedOne.setCount(paraCount);
             selectedOne.setFirst(first);
             selectedOne.setUpdatedAt(new Date());
             selectedOne.setSearchKeyword(keyword);
@@ -803,10 +841,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             if (!success) {
                 retryCount++;
             } else {
+                log.info("leave getScrollingPage,keyword {}, first {}", keyword, first);
                 return first;
             }
         }
-        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取滑动分页页码失败");
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取页码失败");
     }
 
     /**
@@ -849,7 +888,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id", sync = true)
     public PictureVO getPictureVOById(long id, HttpServletRequest request) {
-        log.error("缓存失效！");
+        log.info("缓存失效！");
         if (!pictureBloomFilter.contains(String.valueOf(id))) {
             return null;
         }

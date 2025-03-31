@@ -10,3 +10,7 @@ cos:
 # aLiYun AI
 aliYunAi:
   apiKey: REMOVED_API_KEY
+
+# pixabay API
+pixabay:
+  apiKey: REMOVED_PIXABAY_API_KEY

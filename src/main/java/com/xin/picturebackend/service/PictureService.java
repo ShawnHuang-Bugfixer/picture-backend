@@ -57,7 +57,8 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser                   登录用户
      * @return 返回 上传数量
      */
-    int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
+    @Deprecated
+    int uploadPictureByBatchFromBaidu(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 
     List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser);
 
@@ -80,4 +81,6 @@ public interface PictureService extends IService<Picture> {
     void deletePicture(DeleteRequest deleteRequest, HttpServletRequest request);
 
     void editPicture(PictureEditRequest pictureEditRequest, HttpServletRequest request);
+
+    int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 }
