@@ -2,6 +2,7 @@ package com.xin.picturebackend.model.vo;
 
 import cn.hutool.json.JSONUtil;
 import com.xin.picturebackend.model.entity.Picture;
+import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
@@ -110,9 +111,14 @@ public class PictureVO implements Serializable {
     private String picColor;
 
     /**
-     * 权限列表
+     * 空间 id
      */
-    private List<String> permissionList = new ArrayList<>();
+    private Long spaceId;
+
+    /**
+     * 空间类型
+     */
+    private Integer spaceType;
 
     @Serial
     private static final long serialVersionUID = 1L;

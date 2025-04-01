@@ -17,8 +17,10 @@ import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.SpaceService;
 import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -40,6 +42,7 @@ public class StpInterfaceImpl implements StpInterface {
     private String contextPath;
 
     @Resource
+    @Lazy
     private UserService userService;
 
     @Resource
@@ -61,6 +64,31 @@ public class StpInterfaceImpl implements StpInterface {
         Long pictureId = userAuthContext.getPictureId();
         Long spaceId = userAuthContext.getSpaceId();
         Long spaceUserId = userAuthContext.getSpaceUserId();
+        return getPermissions(spaceId, userId, pictureId, spaceUserId);
+    }
+
+    public void addPermissionsBySpaceUser(ArrayList<String> permissions, SpaceUser dbSpaceuser) {
+        if (ObjUtil.isNotNull(dbSpaceuser)) {
+            switch (dbSpaceuser.getSpaceRole()) {
+                case "admin":
+                    log.error("团队空间拥有者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_OWNER.getValue()));
+                    break;
+                case "editor":
+                    log.error("团队空间编辑者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_EDITOR.getValue()));
+                    break;
+                case "viewer":
+                    log.error("团队空间浏览者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_VIEWER.getValue()));
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    public List<String> getPermissions(Long spaceId, @NonNull Long userId, Long pictureId, Long spaceUserId) {
         ArrayList<String> permissions = new ArrayList<>();
         // 1. userId 在 User 表中 userRole 为 admin，系统管理员
         User dbUser = userService.getById(userId);
@@ -150,26 +178,6 @@ public class StpInterfaceImpl implements StpInterface {
         return permissions;
     }
 
-    private void addPermissionsBySpaceUser(ArrayList<String> permissions, SpaceUser dbSpaceuser) {
-        if (ObjUtil.isNotNull(dbSpaceuser)) {
-            switch (dbSpaceuser.getSpaceRole()) {
-                case "admin":
-                    log.error("团队空间拥有者" + "空间id：{}", dbSpaceuser.getSpaceId());
-                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_OWNER.getValue()));
-                    break;
-                case "editor":
-                    log.error("团队空间编辑者" + "空间id：{}", dbSpaceuser.getSpaceId());
-                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_EDITOR.getValue()));
-                    break;
-                case "viewer":
-                    log.error("团队空间浏览者" + "空间id：{}", dbSpaceuser.getSpaceId());
-                    permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_VIEWER.getValue()));
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
 
     /**
      * 返回一个账号所拥有的角色标识集合 (权限与角色可分开校验)

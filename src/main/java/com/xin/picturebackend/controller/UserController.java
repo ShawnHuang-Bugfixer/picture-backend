@@ -1,7 +1,13 @@
 package com.xin.picturebackend.controller;
 
+import cn.hutool.core.util.ObjUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
+import com.xin.picturebackend.auth.AuthManager;
+import com.xin.picturebackend.auth.StpInterfaceImpl;
+import com.xin.picturebackend.auth.enums.RoleEnum;
+import com.xin.picturebackend.auth.model.PermissionListRequest;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
@@ -10,15 +16,25 @@ import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.*;
+import com.xin.picturebackend.model.entity.Picture;
+import com.xin.picturebackend.model.entity.Space;
+import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
+import com.xin.picturebackend.service.PictureService;
+import com.xin.picturebackend.service.SpaceService;
+import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,9 +44,13 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserController {
     @Resource
     private UserService userService;
+
+    @Resource
+    private StpInterfaceImpl stpInterface;
 
     /**
      * 用户注册
@@ -160,4 +180,13 @@ public class UserController {
         return ResultUtils.success(userVOPage);
     }
 
+    @PostMapping("/permissions")
+    public BaseResponse<List<String>> getPermissions(@RequestBody PermissionListRequest permissionListRequest) {
+        Long spaceId = permissionListRequest.getSpaceId();
+        Long userId = permissionListRequest.getUserId();
+        Long pictureId = permissionListRequest.getPictureId();
+        if (ObjUtil.isNull(userId)) return ResultUtils.success(new ArrayList<>());
+        List<String> permissions = stpInterface.getPermissions(spaceId, userId, pictureId, null);
+        return ResultUtils.success(permissions);
+    }
 }

@@ -7,21 +7,34 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xin.picturebackend.auth.AuthManager;
+import com.xin.picturebackend.auth.StpInterfaceImpl;
+import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.UserQueryRequest;
+import com.xin.picturebackend.model.entity.Picture;
+import com.xin.picturebackend.model.entity.Space;
+import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.UserRoleEnum;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
+import com.xin.picturebackend.service.PictureService;
+import com.xin.picturebackend.service.SpaceService;
+import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.mapper.UserMapper;
+import jdk.jfr.Timestamp;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
@@ -39,6 +52,7 @@ import static com.xin.picturebackend.constant.UserConstant.USER_LOGIN_STATE;
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
+
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         // 1. 参数校验
@@ -148,6 +162,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     /**
      * 构造 QueryWrapper 拼接 sql
+     *
      * @param userQueryRequest 管理员查询请求模型
      * @return 返回拼接后的 QueryWrapper<User>
      */
@@ -177,7 +192,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public boolean isAdmin(User user) {
         return user != null && user.getUserRole().equals(UserRoleEnum.ADMIN.getValue());
     }
-
 }
 
 

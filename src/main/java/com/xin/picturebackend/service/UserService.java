@@ -6,6 +6,7 @@ import com.xin.picturebackend.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
+import lombok.NonNull;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;

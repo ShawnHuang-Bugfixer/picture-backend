@@ -84,6 +84,7 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
 
+    // fixme 批量上传图片，需要优化，同步上传，效率低。可采用异步上传，在 redis 中记录 userId 和 taskId 进行关联，异步上传图片。
     @PostMapping("/upload/batch")
     @SaCheckPermission(PermissionConstants.ADMIN_BATCH_UPLOAD_IMAGE)
     public BaseResponse<Integer> uploadPictureByBatch(
@@ -132,9 +133,9 @@ public class PictureController {
      *
      */
     @GetMapping("/get/vo")
-    public BaseResponse<PictureVO> getPictureVOById(long id, HttpServletRequest request) {
+    public BaseResponse<PictureVO> getPictureVOById(long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        PictureVO pictureVO = pictureService.getPictureVOById(id, request);
+        PictureVO pictureVO = pictureService.getPictureVOById(id);
         // 获取封装类
         return ResultUtils.success(pictureVO);
     }

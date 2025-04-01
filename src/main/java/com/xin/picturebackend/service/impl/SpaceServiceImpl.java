@@ -154,9 +154,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         if (space == null) {
             return null;
         }
-        SpaceVO spaceVO = getSpaceVO(space);
-        spaceVO.setPermissionList(authManager.permissionsAdapter(StpUtil.getPermissionList(), space, userService.getById(space.getUserId())));
-        return spaceVO;
+        return getSpaceVO(space);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.xin.picturebackend.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -136,6 +137,8 @@ public class Picture implements Serializable {
      * 图片主色调
      */
     private String picColor;
+
+    @Serial
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

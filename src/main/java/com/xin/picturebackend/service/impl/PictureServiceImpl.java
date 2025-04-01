@@ -887,7 +887,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      */
     @Override
     @Cacheable(cacheManager = "multiLevelCacheManger", value = "pictureHotKey", key = "'picture:pictureVO:' + #id", sync = true)
-    public PictureVO getPictureVOById(long id, HttpServletRequest request) {
+    public PictureVO getPictureVOById(long id) {
         log.info("缓存失效！");
         if (!pictureBloomFilter.contains(String.valueOf(id))) {
             return null;
@@ -898,6 +898,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         Long spaceId = picture.getSpaceId();
         Space dbSpace = spaceService.getById(spaceId);
+        PictureVO pictureVO = getPictureVO(picture);
         if (dbSpace != null) {
             if (dbSpace.getSpaceType() == 0) {
                 // 私有空间，仅私有空间拥有者可操作
@@ -905,9 +906,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             } else {
                 StpUtil.checkPermission(PermissionConstants.TEAM_VIEW_IMAGE);
             }
+            pictureVO.setSpaceType(dbSpace.getSpaceType());
         }
-        PictureVO pictureVO = getPictureVO(picture);
-        pictureVO.setPermissionList(authManager.permissionsAdapter(StpUtil.getPermissionList(), dbSpace, userService.getById(picture.getUserId())));
         return pictureVO;
     }
 }

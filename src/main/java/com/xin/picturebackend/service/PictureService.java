@@ -66,7 +66,7 @@ public interface PictureService extends IService<Picture> {
 
     CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 
-    PictureVO getPictureVOById(long id, HttpServletRequest request);
+    PictureVO getPictureVOById(long id);
 
     void updatePicture(PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request);
 
