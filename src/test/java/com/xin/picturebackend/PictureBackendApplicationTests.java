@@ -74,16 +74,6 @@ class PictureBackendApplicationTests {
     }
 
 
-    /**
-     * todo 测试正确获取不同身份对应权限
-     *      1. 公共空间拥有者 两空普通用户
-     *      2. 公共空间图片拥有者 图片非空普通用户
-     *      3. 系统管理员 两空系统管理用户
-     *      4. 私人空间拥有者 空间普通用户
-     *      5. 团队空间拥有者 空间普通用户
-     *      6. 团队空间编辑者 空间普通用户
-     *      7. 团队空间浏览者 空间普通用户
-     */
     @Test
     void testGetPermissionFromUserInterface() {
         System.out.println("--------------公共空间拥有者");

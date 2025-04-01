@@ -54,3 +54,7 @@ knife4j:
         api-rule-resources:
           - com.xin.picturebackend.controller
 
+# 日志级别修改
+logging:
+  level:
+    com.xin.picturebackend.auth.StpInterfaceImpl: warn # 或error

@@ -71,15 +71,15 @@ public class StpInterfaceImpl implements StpInterface {
         if (ObjUtil.isNotNull(dbSpaceuser)) {
             switch (dbSpaceuser.getSpaceRole()) {
                 case "admin":
-                    log.error("团队空间拥有者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    log.debug("团队空间拥有者" + "空间id：{}", dbSpaceuser.getSpaceId());
                     permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_OWNER.getValue()));
                     break;
                 case "editor":
-                    log.error("团队空间编辑者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    log.debug("团队空间编辑者" + "空间id：{}", dbSpaceuser.getSpaceId());
                     permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_EDITOR.getValue()));
                     break;
                 case "viewer":
-                    log.error("团队空间浏览者" + "空间id：{}", dbSpaceuser.getSpaceId());
+                    log.debug("团队空间浏览者" + "空间id：{}", dbSpaceuser.getSpaceId());
                     permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.TEAM_SPACE_VIEWER.getValue()));
                     break;
                 default:
@@ -93,7 +93,7 @@ public class StpInterfaceImpl implements StpInterface {
         // 1. userId 在 User 表中 userRole 为 admin，系统管理员
         User dbUser = userService.getById(userId);
         if (dbUser.getUserRole().equals(RoleEnum.SYSTEM_ADMIN.getValue())) {
-            log.error("系统管理员：{}", userId);
+            log.debug("系统管理员：{}", userId);
             permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.SYSTEM_ADMIN.getValue()));
         }
         // 2. pictureId 在 picture 表中有记录
@@ -113,7 +113,7 @@ public class StpInterfaceImpl implements StpInterface {
                             // 2.2.1 空间类型为私人空间
                             //       spaceId 属于 userId，私人空间拥有者
                             if (dbSpace.getUserId().equals(userId)) {
-                                log.error("私人空间拥有者" + "空间id: {}", dbPictureSpaceId);
+                                log.debug("私人空间拥有者" + "空间id: {}", dbPictureSpaceId);
                                 permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PRIVATE_SPACE_OWNER.getValue()));
                             }
                         }
@@ -140,7 +140,7 @@ public class StpInterfaceImpl implements StpInterface {
                 // 3.1 spaceId 对应的空间类型 spaceType == 0 为私人空间
                 // 3.1.1 spaceId 属于 userId，私人空间拥有者
                 if (dbSpace.getSpaceType().equals(0) && dbSpace.getUserId().equals(userId)) {
-                    log.error("私人空间拥有者" + "空间id: {}", spaceId);
+                    log.debug("私人空间拥有者" + "空间id: {}", spaceId);
                     permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PRIVATE_SPACE_OWNER.getValue()));
                 }
                 // 3.2 spaceId 对应的空间类型 spaceType == 1 为团队空间
@@ -174,7 +174,7 @@ public class StpInterfaceImpl implements StpInterface {
             addPermissionsBySpaceUser(permissions, dbSpaceuser);
         }
         permissions.addAll(AuthManager.getPermissionsByRole(RoleEnum.PUBLIC_SPACE_OWNER.getValue()));
-        log.error("权限列表：{}", permissions);
+        log.debug("权限列表：{}", permissions);
         return permissions;
     }
 

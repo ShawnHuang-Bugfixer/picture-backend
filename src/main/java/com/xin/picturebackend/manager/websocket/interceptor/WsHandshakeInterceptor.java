@@ -4,6 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xin.picturebackend.auth.constant.PermissionConstants;
+import com.xin.picturebackend.exception.BusinessException;
+import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.User;
@@ -54,14 +56,16 @@ public class WsHandshakeInterceptor implements HandshakeInterceptor {
                 return false;
             }
             // 连接校验
-            return hasPermissionThenInitial(servletRequest, pictureId, attributes);
+            boolean result = hasPermissionThenInitial(servletRequest, pictureId, attributes);
+            if (!result) throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "用户没有团队空间修改图片权限，拒绝握手");
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override
     public void afterHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response, @NonNull WebSocketHandler wsHandler, Exception exception) {
-
+        log.error("握手结束");
     }
 
     private boolean hasPermissionThenInitial(HttpServletRequest servletRequest, String pictureId, Map<String, Object> attributes) {
@@ -99,6 +103,7 @@ public class WsHandshakeInterceptor implements HandshakeInterceptor {
         attributes.put("user", loginUser);
         attributes.put("pictureId", Long.parseLong(pictureId));
         attributes.put("userId", loginUser.getId());
+        log.error("握手成功！");
         return true;
     }
 }
