@@ -96,8 +96,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             log.error("user login fail, userAccount:{}, userPassword:{}", userAccount, userPassword);
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名或密码错误！");
         }
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
-        StpUtil.login(user.getId());
+        StpUtil.login(user.getId()); // fixme 查看登录流程
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginVO(user);
     }
@@ -118,7 +117,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
-        User loggedInUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        User loggedInUser  = (User)StpUtil.getSession().get(USER_LOGIN_STATE);
         ThrowUtils.throwIf(loggedInUser == null || loggedInUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
         Long id = loggedInUser.getId();
         User fetchedUser = this.getById(id);
@@ -153,9 +152,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public boolean userLogout(HttpServletRequest request) {
-        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
+        Object attribute = StpUtil.getSession().get(USER_LOGIN_STATE);
         ThrowUtils.throwIf(attribute == null, ErrorCode.NOT_LOGIN_ERROR);
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
         StpUtil.logout();
         return true;
     }
