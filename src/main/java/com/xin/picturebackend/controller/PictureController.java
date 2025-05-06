@@ -59,7 +59,6 @@ public class PictureController {
 
     /**
      * 上传图片（可重新上传）
-     * fixme: 请求头multipart/form-data, knife4j 将参数列表解析为了 String 类型，需要手动转化json 为实体。
      */
     @PostMapping("/upload")
     public BaseResponse<PictureVO> uploadPicture(

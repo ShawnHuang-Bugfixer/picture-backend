@@ -2,15 +2,11 @@ server:
   port: 8123
   servlet:
     context-path: /api
-    # cookie 30 天过期
-    session:
-      cookie:
-        max-age: 2592000
+
 spring:
-  session:
-    store-type: redis
-    # session 30 天过期
-    timeout: 2592000
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd'T'HH:mm:ss
   application:
     name: picture-backend
   datasource:
@@ -30,12 +26,18 @@ spring:
     database: 0
     timeout: 3000ms
 
+sa-token:
+  # jwt秘钥
+  jwt-secret-key: REDACTED_JWT_SECRET
+  timeout: 360000
+  token-name: sa_token
+
 # mybatis-plus
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
-#    # 开发环境下开启日志
-#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  #    # 开发环境下开启日志
+  #    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: isDelete
@@ -58,3 +60,20 @@ knife4j:
 logging:
   level:
     com.xin.picturebackend.auth.StpInterfaceImpl: warn # 或error
+
+# 自定义 Cookie
+app:
+  script:
+    lua:
+      deleteByRefreshToken:
+        path: "lua/delete_refresh_and_reverse.lua"
+      deleteByUserIdToken:
+        path: "lua/delete_by_userid.lua"
+  cookies:
+    cookieConfigs:
+      refreshToken:
+        name: re_token
+        max-age: 864000
+        path: "/api/user/auth/refresh"
+        http-only: true
+        same-site: "Lax"

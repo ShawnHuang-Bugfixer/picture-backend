@@ -1,6 +1,5 @@
 package com.xin.picturebackend.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -235,7 +234,6 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             locked = lock.tryLock(1, 3, TimeUnit.SECONDS);
 
             if (locked) {
-                // fixme 研究这里为什么要加事务？？
                 final Space finalSpace = space;
                 newSpaceId = transactionTemplate.execute(status -> {
                     // 查询数据库，检查是否已存在未删除的空间

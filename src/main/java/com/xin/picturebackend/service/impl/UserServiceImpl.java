@@ -1,57 +1,61 @@
 package com.xin.picturebackend.service.impl;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.stp.SaLoginConfig;
+import cn.dev33.satoken.stp.SaLoginModel;
+import cn.dev33.satoken.stp.StpLogic;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.xin.picturebackend.auth.AuthManager;
-import com.xin.picturebackend.auth.StpInterfaceImpl;
-import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.UserQueryRequest;
-import com.xin.picturebackend.model.entity.Picture;
-import com.xin.picturebackend.model.entity.Space;
-import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.UserRoleEnum;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
-import com.xin.picturebackend.service.PictureService;
-import com.xin.picturebackend.service.SpaceService;
-import com.xin.picturebackend.service.SpaceUserService;
+import com.xin.picturebackend.service.TokenService;
 import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.mapper.UserMapper;
-import jdk.jfr.Timestamp;
-import lombok.NonNull;
+import com.xin.picturebackend.token.RefreshToken;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.xin.picturebackend.constant.UserConstant.USER_LOGIN_STATE;
-
 /**
  * @author Lenovo
- * @description 针对表【user(用户)】的数据库操作Service实现
- * @createDate 2025-02-26 10:49:48
  */
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
+    @Value("${app.cookies.cookieConfigs.refreshToken.name}")
+    private String refreshTokenName;
+
+    @Value("${app.cookies.cookieConfigs.refreshToken.path}")
+    private String path;
+
+    @Resource
+    private TokenService tokenService;
+
+    @Resource
+    private StpLogic stpLogicJwtForStateless;
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -78,15 +82,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request, HttpServletResponse response) {
         // 1. 参数校验
-        // 2. 用户名校验
-        // 3. 密码加密
-        // 4. 密文比对校验
-        // 5. 开启会话保持登录状态
         ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword), ErrorCode.PARAMS_ERROR, "参数为空");
         ThrowUtils.throwIf(userAccount.length() < 4, ErrorCode.PARAMS_ERROR, "用户名错误");
         ThrowUtils.throwIf(userPassword.length() < 8, ErrorCode.PARAMS_ERROR, "密码错误");
+        // 2. 数据库校验
         String encryptPassword = getEncryptPassword(userPassword);
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
@@ -96,8 +97,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             log.error("user login fail, userAccount:{}, userPassword:{}", userAccount, userPassword);
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名或密码错误！");
         }
-        StpUtil.login(user.getId()); // fixme 查看登录流程
-        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        // 3. 生成 JWT，默认将 JWT 写入 Cookie;
+        String jti = IdUtil.randomUUID();
+        StpUtil.login(user.getId(), SaLoginConfig
+                .setExtra("jti", jti));
+        // 4. 生成 RefreshToken，将 RefreshToken 写入 redis。
+        RefreshToken refreshTokenObj = tokenService.createRefreshTokenObj(user.getId(), jti);
+        String refreshToken = tokenService.generateRefreshToken();
+        tokenService.storeRefreshTokenToRedis(refreshToken, refreshTokenObj);
+        // 5. 将 RefreshToken 写入到 cookie
+        tokenService.writeRefreshTokenToCookies(response, refreshToken);
+        // 6. 建立反向索引 user_refresh_token:{userId} → refreshToken
+        tokenService.buildReverseIndex(user.getId(), refreshToken);
         return this.getLoginVO(user);
     }
 
@@ -117,10 +128,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
-        User loggedInUser  = (User)StpUtil.getSession().get(USER_LOGIN_STATE);
-        ThrowUtils.throwIf(loggedInUser == null || loggedInUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
-        Long id = loggedInUser.getId();
-        User fetchedUser = this.getById(id);
+        // todo 先判断 jwt 是否是黑名单成员
+//        String jti = StpUtil.getExtra("jti").toString();
+        Long loginId = StpUtil.getLoginIdAsLong();
+        User fetchedUser = null;
+        fetchedUser = this.getById(loginId);
+//        if (tokenService.notInJWTBlacklist(jti, loginId)) {
+//            fetchedUser = this.getById(loginId);
+//        }
         ThrowUtils.throwIf(fetchedUser == null, ErrorCode.NOT_LOGIN_ERROR);
         return fetchedUser;
     }
@@ -151,10 +166,59 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public boolean userLogout(HttpServletRequest request) {
-        Object attribute = StpUtil.getSession().get(USER_LOGIN_STATE);
-        ThrowUtils.throwIf(attribute == null, ErrorCode.NOT_LOGIN_ERROR);
+    public boolean userLogout(HttpServletRequest request, HttpServletResponse response) {
+        String jti = StpUtil.getExtra("jti").toString();
+        long userId = StpUtil.getLoginIdAsLong();
+        // 1. 把 jti 加入 redis 黑名单 jwt_blacklist:{userId}
+        tokenService.addIntoBlackList(jti, userId);
+        // 2. 从 redis 中清除 user_refresh_token:{userId}
+        // 3. 从 redis 中清除 refresh_token:{refreshToken}
+        tokenService.removeRefreshTokenAndReverseIndex(userId);
+        // 4. 清除 cookie
         StpUtil.logout();
+        tokenService.removeCookie(response, refreshTokenName, path);
+        return true;
+    }
+
+    @Override
+    public boolean refreshJWT(HttpServletRequest request, HttpServletResponse response) {
+        // 获取 Cookie 信息
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookies.length == 0) {
+            log.info("cookies is empty");
+            return false;
+        }
+        // 查找 Refresh Token
+        String refreshToken = null;
+        for (Cookie cookie : cookies) {
+            if (refreshTokenName.equals(cookie.getName())) {
+                refreshToken = cookie.getValue();
+            }
+        }
+
+        // 3. 利用 refreshToken 请求新的 JWT。
+        RefreshToken fetchRefreshTokenObj = tokenService.checkAndGetRefreshTokenObj(refreshToken);
+        if (fetchRefreshTokenObj == null) {
+            log.info("illegal refreshToken!");
+            return false;
+        }
+        // 删除 Redis 中旧 refreshToken, 删除反向索引
+        boolean success = tokenService.removeRefreshTokenAndReverseIndex(refreshToken, fetchRefreshTokenObj.getUserId());
+        if (!success) {
+            log.info("operate redis fail!");
+            return false;
+        }
+        // 构建新的 JWT 和 refreshToken 并写入 response cookies
+        String jti = IdUtil.randomUUID();
+        SaLoginModel saLoginModel = SaLoginConfig.setExtra("jti", jti);
+        String newJWT = stpLogicJwtForStateless.createLoginSession(fetchRefreshTokenObj.getUserId(), saLoginModel);
+        stpLogicJwtForStateless.setTokenValue(newJWT, saLoginModel); // 自动根据 saToken 配置写入指定位置
+        refreshToken = tokenService.generateRefreshToken();
+        RefreshToken newRefreshTokenObj = tokenService.createNewRefreshTokenBasedOnOld(fetchRefreshTokenObj, jti);
+        tokenService.writeRefreshTokenToCookies(response, refreshToken);
+        // 将新 refreshToken 和 新 反向索引 写入 Redis
+        tokenService.storeRefreshTokenToRedis(refreshToken, newRefreshTokenObj);
+        tokenService.buildReverseIndex(fetchRefreshTokenObj.getUserId(), refreshToken);
         return true;
     }
 

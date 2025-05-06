@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,11 +67,11 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request, HttpServletResponse response) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR);
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
-        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
+        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request, response);
         return ResultUtils.success(loginUserVO);
     }
 
@@ -81,8 +82,8 @@ public class UserController {
     }
 
     @PostMapping("/logout")
-    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
-        boolean result = userService.userLogout(request);
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request, HttpServletResponse response) {
+        boolean result = userService.userLogout(request, response);
         return ResultUtils.success(result);
     }
 
@@ -188,5 +189,11 @@ public class UserController {
         if (ObjUtil.isNull(userId)) return ResultUtils.success(new ArrayList<>());
         List<String> permissions = stpInterface.getPermissions(spaceId, userId, pictureId, null);
         return ResultUtils.success(permissions);
+    }
+
+    @PostMapping("/auth/refresh")
+    public BaseResponse<Boolean> refreshJWT (HttpServletRequest request, HttpServletResponse response) {
+        boolean result = userService.refreshJWT(request, response);
+        return ResultUtils.success(result);
     }
 }

@@ -164,7 +164,6 @@ public class StpInterfaceImpl implements StpInterface {
         //       * spaceRole == editor 团队空间编辑者
         if (ObjUtil.isNotNull(spaceUserId)) {
             SpaceUser dbSpaceuser = spaceUserService.getById(spaceUserId);
-            // fixme 根据 spaceUserId 查询 spaceId, 根据 spaceId 和 userId 查询 spac_user 表，获取 userid 的权限
             Long teamSpaceId = dbSpaceuser.getSpaceId();
             QueryWrapper<SpaceUser> spaceUserQueryWrapper = new QueryWrapper<>();
             spaceUserQueryWrapper.select("spaceRole")

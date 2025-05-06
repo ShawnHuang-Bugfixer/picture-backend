@@ -9,6 +9,7 @@ import com.xin.picturebackend.model.vo.UserVO;
 import lombok.NonNull;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -27,7 +28,7 @@ public interface UserService extends IService<User> {
      */
     long userRegister(String userAccount, String userPassword, String checkPassword);
 
-    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request, HttpServletResponse response);
 
     LoginUserVO getLoginVO(User user);
 
@@ -39,9 +40,11 @@ public interface UserService extends IService<User> {
 
     String getEncryptPassword(String password);
 
-    boolean userLogout(HttpServletRequest request);
+    boolean userLogout(HttpServletRequest request, HttpServletResponse response);
 
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
 
     boolean isAdmin(User user);
+
+    boolean refreshJWT(HttpServletRequest request, HttpServletResponse response);
 }
