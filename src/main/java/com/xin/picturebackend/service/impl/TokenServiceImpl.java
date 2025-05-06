@@ -210,7 +210,7 @@ public class TokenServiceImpl implements TokenService {
     public void addIntoBlackList(String jti, long userId) {
         String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId;
         ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
-        operations.set(key, jti);
+        operations.set(key, jti, JWTRedisTTL, TimeUnit.SECONDS);
     }
 
     @Override

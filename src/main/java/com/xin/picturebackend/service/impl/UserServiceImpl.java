@@ -129,13 +129,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
         // todo 先判断 jwt 是否是黑名单成员
-//        String jti = StpUtil.getExtra("jti").toString();
         Long loginId = StpUtil.getLoginIdAsLong();
+        String jti = StpUtil.getExtra("jti").toString();
         User fetchedUser = null;
-        fetchedUser = this.getById(loginId);
-//        if (tokenService.notInJWTBlacklist(jti, loginId)) {
-//            fetchedUser = this.getById(loginId);
-//        }
+        if (tokenService.notInJWTBlacklist(jti, loginId)) {
+            fetchedUser = this.getById(loginId);
+        }
         ThrowUtils.throwIf(fetchedUser == null, ErrorCode.NOT_LOGIN_ERROR);
         return fetchedUser;
     }
