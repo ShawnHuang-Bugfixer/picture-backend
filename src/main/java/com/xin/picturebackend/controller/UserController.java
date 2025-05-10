@@ -22,10 +22,7 @@ import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
-import com.xin.picturebackend.service.PictureService;
-import com.xin.picturebackend.service.SpaceService;
-import com.xin.picturebackend.service.SpaceUserService;
-import com.xin.picturebackend.service.UserService;
+import com.xin.picturebackend.service.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -52,6 +49,9 @@ public class UserController {
 
     @Resource
     private StpInterfaceImpl stpInterface;
+
+    @Resource
+    private RateLimiterService rateLimiterService;
 
     /**
      * 用户注册
@@ -195,5 +195,22 @@ public class UserController {
     public BaseResponse<Boolean> refreshJWT (HttpServletRequest request, HttpServletResponse response) {
         boolean result = userService.refreshJWT(request, response);
         return ResultUtils.success(result);
+    }
+
+    @GetMapping("/limiter/constant")
+    public String getRateLimitConstant() {
+        return "当前限流速率常量: " + rateLimiterService.getDefaultPermitsPerSecond() + " 次/秒";
+    }
+
+    @PostMapping("/limiter/constant/update")
+    public String updateRateLimitConstant(@RequestParam double permitsPerSecond) {
+        rateLimiterService.updateDefaultPermitsPerSecond(permitsPerSecond);
+        return "限流速率常量已更新为: " + permitsPerSecond + " 次/秒，并已热更新所有缓存的限流器。";
+    }
+
+    @PostMapping("/limiter/clear-cache")
+    public String clearCache() {
+        rateLimiterService.clearCache();
+        return "限流缓存已清空。";
     }
 }

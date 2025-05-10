@@ -59,10 +59,16 @@ knife4j:
 # 日志级别修改
 logging:
   level:
-    com.xin.picturebackend.auth.StpInterfaceImpl: warn # 或error
+    com.xin.picturebackend: debug  # 设置整个包的默认级别为debug
+    com.xin.picturebackend.auth.StpInterfaceImpl: warn  # 特定类保持warn级别
 
-# 自定义 Cookie
+
+# 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
+  rateLimiter:
+    defaultPermitsPerSecond: 5.0
+    expireAfterAccess: 600
+    maximumSize: 100000
   script:
     lua:
       deleteByRefreshToken:
