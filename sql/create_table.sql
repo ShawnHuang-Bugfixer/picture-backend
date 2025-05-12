@@ -54,7 +54,6 @@ ALTER TABLE picture
     ADD COLUMN reviewerId    BIGINT        NULL COMMENT '审核人 ID',
     ADD COLUMN reviewTime    DATETIME      NULL COMMENT '审核时间';
 
--- fixme 图片查重
 -- 修改图片表，增加感知哈希值字段和索引
 ALTER TABLE picture
     ADD COLUMN pHash VARCHAR(64) DEFAULT NULL COMMENT '感知哈希值',

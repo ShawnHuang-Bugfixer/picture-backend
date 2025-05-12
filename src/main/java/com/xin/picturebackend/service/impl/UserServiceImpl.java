@@ -128,7 +128,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
-        // todo 先判断 jwt 是否是黑名单成员
         Long loginId = StpUtil.getLoginIdAsLong();
         String jti = StpUtil.getExtra("jti").toString();
         User fetchedUser = null;

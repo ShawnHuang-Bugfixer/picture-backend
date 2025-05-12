@@ -59,14 +59,17 @@ knife4j:
 # 日志级别修改
 logging:
   level:
-    com.xin.picturebackend: debug  # 设置整个包的默认级别为debug
-    com.xin.picturebackend.auth.StpInterfaceImpl: warn  # 特定类保持warn级别
-
+    com.xin.picturebackend: debug
 
 # 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
+  hotkey:
+    detect:
+      threshold: 100
+      maxCapacity: 1000
+      expireSec: 10
   rateLimiter:
-    defaultPermitsPerSecond: 5.0
+    defaultPermitsPerSecond: 3.0
     expireAfterAccess: 600
     maximumSize: 100000
   script:

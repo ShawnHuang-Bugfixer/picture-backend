@@ -1,12 +1,9 @@
 package com.xin.picturebackend.controller;
 
 import cn.hutool.core.util.ObjUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
-import com.xin.picturebackend.auth.AuthManager;
 import com.xin.picturebackend.auth.StpInterfaceImpl;
-import com.xin.picturebackend.auth.enums.RoleEnum;
 import com.xin.picturebackend.auth.model.PermissionListRequest;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
@@ -16,17 +13,13 @@ import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.*;
-import com.xin.picturebackend.model.entity.Picture;
-import com.xin.picturebackend.model.entity.Space;
-import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
-import com.xin.picturebackend.service.*;
-import lombok.NonNull;
+import com.xin.picturebackend.service.RateLimiterService;
+import com.xin.picturebackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;

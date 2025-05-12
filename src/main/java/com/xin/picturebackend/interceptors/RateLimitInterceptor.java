@@ -1,5 +1,9 @@
 package com.xin.picturebackend.interceptors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xin.picturebackend.common.BaseResponse;
+import com.xin.picturebackend.common.ResultUtils;
+import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.service.RateLimiterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -29,14 +33,21 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         Method method = handlerMethod.getMethod();
         String methodName = method.getDeclaringClass().getName() + "." + method.getName();
         String key = ip + ":" + methodName;
-        log.debug("key is {}", key);
 
         boolean acquired = rateLimiterService.getRateLimiter(key).tryAcquire();
 
         if (!acquired) {
+            BaseResponse<?> error = ResultUtils.error(ErrorCode.TOO_MANY_REQUEST, "请求频率过高，请稍后再试。");
+
             response.setStatus(429); // Too Many Requests
-            response.getWriter().write("请求频率过高，请稍后再试。");
-            log.debug("too many requests!");
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonResponse = objectMapper.writeValueAsString(error);
+            response.getWriter().write(jsonResponse);
+
+            log.debug("key :{} 请求频率过高！", key);
             return false;
         }
 

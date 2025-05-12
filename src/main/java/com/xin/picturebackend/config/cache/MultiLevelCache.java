@@ -41,14 +41,14 @@ public class MultiLevelCache implements Cache {
         // 1. 查询Caffeine
         ValueWrapper value = caffeineCache.get(key);
         if (value != null) {
-//            log.error("get key:{} from caffeine", key);
+            log.debug("get key:{} from caffeine", key);
             return value;
         }
 
         // 2. 查询Redis
         ValueWrapper redisValue = redisCache.get(key);
         if (redisValue != null) {
-//            log.error("get key:{} from redis", key);
+            log.debug("get key:{} from redis", key);
             return redisValue;
         }
         return null;
@@ -81,6 +81,7 @@ public class MultiLevelCache implements Cache {
         // 1. 查询Caffeine
         T caffeineValue = caffeineCache.get(key, type);
         if (caffeineValue != null) {
+            log.debug("get data from caffeine, key : {}", key);
             return caffeineValue;
         }
 
@@ -102,6 +103,7 @@ public class MultiLevelCache implements Cache {
         // 1. 先尝试从本地缓存获取
         ValueWrapper value =  caffeineCache.get(key);
         if (value != null) {
+            log.debug("get data from caffeine, key : {}", key);
             return (T)value.get();
         }
 
@@ -122,7 +124,7 @@ public class MultiLevelCache implements Cache {
                     if (value != null) {
                         return (T)value.get();
                     }
-                    log.error("rebuild redis cache----------------------------------------");
+                    log.debug("rebuild redis cache----------------------------------------");
                     // 3.3 执行加载逻辑（如数据库查询）
                     T data = valueLoader.call();
 
