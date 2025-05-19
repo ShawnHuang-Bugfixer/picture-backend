@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
  * @author 黄兴鑫
  * @since 2025/2/26 14:46
  */
+@Deprecated
 @Aspect
 @Component
 public class AuthInterceptor {

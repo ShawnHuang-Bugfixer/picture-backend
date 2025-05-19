@@ -3,18 +3,15 @@ package com.xin.picturebackend.auth;
 import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.xin.picturebackend.auth.enums.RoleEnum;
-import com.xin.picturebackend.model.entity.Space;
-import com.xin.picturebackend.model.entity.SpaceUser;
-import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.service.SpaceUserService;
 import com.xin.picturebackend.service.UserService;
 import lombok.Data;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class AuthManager {
@@ -56,112 +53,6 @@ public class AuthManager {
         return rolePermissionMapping.mappings.get(roleName).getPermissions();
     }
 
-    // 角色权限适配器，必须根据前端重写,仅仅为了复用教程逻
-    public List<String> permissionsAdapter(Space space, User loginUser) {
-        // 管理员权限
-        String[] permissions = new String[]{"spaceUser:manage",
-                "picture:view",
-                "picture:upload",
-                "picture:edit",
-                "picture:delete"};
-        List<String> ADMIN_PERMISSIONS = Arrays.stream(permissions).toList();
-        // 公共图库
-        if (space == null) {
-            if (userService.isAdmin(loginUser)) {
-                return ADMIN_PERMISSIONS;
-            }
-            return new ArrayList<>();
-        }
-        SpaceTypeEnum spaceTypeEnum = SpaceTypeEnum.getEnumByValue(space.getSpaceType());
-        if (spaceTypeEnum == null) {
-            return new ArrayList<>();
-        }
-        // 根据空间获取对应的权限
-        switch (spaceTypeEnum) {
-            case PRIVATE:
-                // 私有空间，仅本人或管理员有所有权限
-                if (space.getUserId().equals(loginUser.getId()) || userService.isAdmin(loginUser)) {
-                    return ADMIN_PERMISSIONS;
-                } else {
-                    return new ArrayList<>();
-                }
-            case TEAM:
-                // 团队空间，查询 SpaceUser 并获取角色和权限
-                SpaceUser spaceUser = spaceUserService.lambdaQuery()
-                        .eq(SpaceUser::getSpaceId, space.getId())
-                        .eq(SpaceUser::getUserId, loginUser.getId())
-                        .one();
-                if (spaceUser == null) {
-                    return new ArrayList<>();
-                } else {
-                    ArrayList<String> permissionList = new ArrayList<>();
-                    String spaceRole = spaceUser.getSpaceRole();
-                    switch (spaceRole) {
-                        case "admin":
-                            permissionList.addAll(Arrays.stream(permissions).toList());
-                            break;
-                        case "viewer":
-                            permissionList.add("picture:view");
-                            break;
-                        case "editor":
-                            permissionList.add("picture:view");
-                            permissionList.add("picture:upload");
-                            permissionList.add("picture:edit");
-                            permissionList.add("picture:delete");
-                            break;
-                    }
-                    return permissionList;
-                }
-        }
-        return new ArrayList<>();
-    }
-
-//    public List<String> getPermissionList(Space space, User loginUser) {
-//        if (loginUser == null) {
-//            return new ArrayList<>();
-//        }
-//        // 管理员权限
-//        List<String> ADMIN_PERMISSIONS = getPermissionsByRole(SpaceRoleEnum.ADMIN.getValue());
-//        // 公共图库
-//        if (space == null) {
-//            if (userService.isAdmin(loginUser)) {
-//                return ADMIN_PERMISSIONS;
-//            }
-//            return new ArrayList<>();
-//        }
-//        SpaceTypeEnum spaceTypeEnum = SpaceTypeEnum.getEnumByValue(space.getSpaceType());
-//        if (spaceTypeEnum == null) {
-//            return new ArrayList<>();
-//        }
-//        // 根据空间获取对应的权限
-//        switch (spaceTypeEnum) {
-//            case PRIVATE:
-//                // 私有空间，仅本人或管理员有所有权限
-//                if (space.getUserId().equals(loginUser.getId()) || userService.isAdmin(loginUser)) {
-//                    return ADMIN_PERMISSIONS;
-//                } else {
-//                    return new ArrayList<>();
-//                }
-//            case TEAM:
-//                // 团队空间，查询 SpaceUser 并获取角色和权限
-//                SpaceUser spaceUser = spaceUserService.lambdaQuery()
-//                        .eq(SpaceUser::getSpaceId, space.getId())
-//                        .eq(SpaceUser::getUserId, loginUser.getId())
-//                        .one();
-//                if (spaceUser == null) {
-//                    return new ArrayList<>();
-//                } else {
-//                    return getPermissionsByRole(spaceUser.getSpaceRole());
-//                }
-//        }
-//        return new ArrayList<>();
-//    }
-
-
-
-
-
-
     @Data
     private static class RolePermissionMapping {
         private Map<String, RolePermission> mappings = new HashMap<>();
@@ -179,17 +70,6 @@ public class AuthManager {
                 this.roleName = roleName;
                 this.permissions = permissions;
             }
-        }
-    }
-
-    public static void main(String[] args) {
-        List<List<String>> list = RoleEnum.getAllValues().stream()
-                .map(AuthManager::getPermissionsByRole)
-                .toList();
-        int i = 0;
-        for (String allValue : RoleEnum.getAllValues()) {
-            System.out.println(allValue);
-            System.out.println(list.get(i++));
         }
     }
 }

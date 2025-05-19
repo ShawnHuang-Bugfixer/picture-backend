@@ -135,7 +135,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (ObjectUtil.isNull(id)) {
             // 1.1 spaceId == null 上传到公共空间
             if (ObjectUtil.isNull(spaceId)) {
-
                 StpUtil.checkPermission(PermissionConstants.PUBLIC_UPLOAD_IMAGE);
             } else {
                 // 1.2 spaceId ！= null 上传到非公共空间

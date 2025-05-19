@@ -27,12 +27,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
-/**
- * 利用 Caffeine 统计 key 的访问频次。将一段时间内访问次数超过指定阈值的 key 视为 hotKey 并写入 caffeine。
- *
- * @author 黄兴鑫
- * @since 2025/3/15 15:17
- */
+
 @Aspect
 @Component
 @Slf4j

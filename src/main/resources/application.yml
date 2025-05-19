@@ -86,3 +86,7 @@ app:
         path: "/api/user/auth/refresh"
         http-only: true
         same-site: "Lax"
+      onceToken:
+        name: sec_token
+        max-age: 240
+        path: "/"

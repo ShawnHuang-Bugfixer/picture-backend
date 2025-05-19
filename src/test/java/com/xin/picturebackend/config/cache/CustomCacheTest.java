@@ -11,10 +11,6 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 
 import javax.annotation.Resource;
 import java.util.Collection;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * 测试基于 spring cache 的自定义缓存逻辑是否生效。

@@ -6,6 +6,7 @@ import com.xin.picturebackend.model.entity.Picture;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -18,7 +19,7 @@ import java.util.List;
  * @author 黄兴鑫
  * @since 2025/3/15 9:51
  */
-@Component
+@Configuration
 public class BloomFilterInitializer {
 
     @Resource

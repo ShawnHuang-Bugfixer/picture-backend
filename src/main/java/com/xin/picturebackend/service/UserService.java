@@ -47,4 +47,6 @@ public interface UserService extends IService<User> {
     boolean isAdmin(User user);
 
     boolean refreshJWT(HttpServletRequest request, HttpServletResponse response);
+
+    void getOnceToken(HttpServletResponse response);
 }

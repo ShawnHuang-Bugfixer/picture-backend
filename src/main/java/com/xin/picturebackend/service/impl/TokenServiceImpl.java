@@ -85,10 +85,13 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public void removeCookie(HttpServletResponse response, String cookieName, String path) {
+    public void removeCookie(HttpServletResponse response, String cookieName, String path, String domain) {
         Cookie cookie = new Cookie(cookieName, null);
-        cookie.setPath(path); // 设置与要删除的cookie相同的路径
-        cookie.setMaxAge(0); // 设置为0表示立即删除
+        cookie.setPath(path);
+        cookie.setMaxAge(0);
+        if (StrUtil.isNotEmpty(domain)) {
+            cookie.setDomain(domain);
+        }
         response.addCookie(cookie);
     }
 
@@ -131,8 +134,8 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public void writeRefreshTokenToCookies(HttpServletResponse response, String token) {
-        CookiesProperties.CookieInfo refreshTokenInfo = cookiesProperties.getCookieConfigs().get("refreshToken");
+    public void writeTokenToCookies(HttpServletResponse response, String token, String configKey) {
+        CookiesProperties.CookieInfo refreshTokenInfo = cookiesProperties.getCookieConfigs().get(configKey);
         Cookie cookie = CookieUtil.buildCookie(refreshTokenInfo, token);
         String setCookieHeader = CookieUtil.buildSetCookieHeader(cookie, refreshTokenInfo.getSameSite());
         log.error(setCookieHeader);
@@ -216,6 +219,6 @@ public class TokenServiceImpl implements TokenService {
         String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId;
         ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
         String s = operations.get(key);
-        return s == null;
+        return s == null || !s.equals(jti);
     }
 }

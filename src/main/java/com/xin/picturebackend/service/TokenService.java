@@ -11,7 +11,7 @@ public interface TokenService {
 
     RefreshToken checkAndGetRefreshTokenObj(String refreshToken);
 
-    void removeCookie(HttpServletResponse response, String cookieName, String path);
+    void removeCookie(HttpServletResponse response, String cookieName, String path, String domain);
 
     RefreshToken createRefreshTokenObj(Long userId, String jti);
 
@@ -19,7 +19,7 @@ public interface TokenService {
 
     void storeRefreshTokenToRedis(String refreshToken, RefreshToken refreshTokenObj);
 
-    void writeRefreshTokenToCookies(HttpServletResponse response, String token);
+    void writeTokenToCookies(HttpServletResponse response, String token, String configKey);
 
     RefreshToken createNewRefreshTokenBasedOnOld(@NotNull RefreshToken old, @NotNull String jti);
 

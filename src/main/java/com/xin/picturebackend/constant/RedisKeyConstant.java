@@ -5,4 +5,5 @@ public interface RedisKeyConstant {
     String REFRESH_TOKEN_KEY_PREFIX = "refresh_token:"; //{refreshToken}
     String REVERSE_INDEX_PREFIX = "user_refresh_token:"; // {userId}
     String JWT_BLACKLIST_PREFIX = "jwt_blacklist:"; // {userId}
+    String ONCE_TOKEN_PREFIX = "once_token:"; // {userId}
 }

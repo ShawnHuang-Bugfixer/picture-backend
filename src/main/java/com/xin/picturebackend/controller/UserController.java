@@ -1,13 +1,16 @@
 package com.xin.picturebackend.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.ObjUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
+import com.xin.picturebackend.annotation.OnceTokenRequired;
 import com.xin.picturebackend.auth.StpInterfaceImpl;
 import com.xin.picturebackend.auth.model.PermissionListRequest;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
+import com.xin.picturebackend.constant.RedisKeyConstant;
 import com.xin.picturebackend.constant.UserConstant;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
@@ -205,5 +208,11 @@ public class UserController {
     public String clearCache() {
         rateLimiterService.clearCache();
         return "限流缓存已清空。";
+    }
+
+    @GetMapping("/oncetoken")
+    public BaseResponse<Boolean> getOnceToken(HttpServletResponse response) {
+        userService.getOnceToken(response);
+        return ResultUtils.success(true);
     }
 }

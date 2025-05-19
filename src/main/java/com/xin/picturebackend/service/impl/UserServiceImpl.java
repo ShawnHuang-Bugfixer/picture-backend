@@ -6,11 +6,14 @@ import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpLogic;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xin.picturebackend.config.CookiesProperties;
+import com.xin.picturebackend.constant.RedisKeyConstant;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -23,12 +26,16 @@ import com.xin.picturebackend.service.TokenService;
 import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.mapper.UserMapper;
 import com.xin.picturebackend.token.RefreshToken;
+import com.xin.picturebackend.utils.CookieUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -45,17 +52,34 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
-    @Value("${app.cookies.cookieConfigs.refreshToken.name}")
-    private String refreshTokenName;
-
-    @Value("${app.cookies.cookieConfigs.refreshToken.path}")
-    private String path;
 
     @Resource
     private TokenService tokenService;
 
     @Resource
     private StpLogic stpLogicJwtForStateless;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private CookiesProperties cookiesProperties;
+
+    private String domain;
+
+    private String refreshTokenName;
+
+    private String path;
+
+    @PostConstruct
+    public void init() {
+        CookiesProperties.CookieInfo refreshTokenInfo = cookiesProperties.getCookieConfigs().get("refreshToken");
+        Cookie refreshCookie = CookieUtil.buildCookie(refreshTokenInfo, null);
+        refreshTokenName = refreshCookie.getName();
+        path = refreshCookie.getPath();
+        domain = refreshCookie.getDomain();
+    }
+
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -106,7 +130,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String refreshToken = tokenService.generateRefreshToken();
         tokenService.storeRefreshTokenToRedis(refreshToken, refreshTokenObj);
         // 5. 将 RefreshToken 写入到 cookie
-        tokenService.writeRefreshTokenToCookies(response, refreshToken);
+        tokenService.writeTokenToCookies(response, refreshToken, "refreshToken");
         // 6. 建立反向索引 user_refresh_token:{userId} → refreshToken
         tokenService.buildReverseIndex(user.getId(), refreshToken);
         return this.getLoginVO(user);
@@ -174,7 +198,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         tokenService.removeRefreshTokenAndReverseIndex(userId);
         // 4. 清除 cookie
         StpUtil.logout();
-        tokenService.removeCookie(response, refreshTokenName, path);
+        tokenService.removeCookie(response, refreshTokenName, path, domain);
         return true;
     }
 
@@ -213,7 +237,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         stpLogicJwtForStateless.setTokenValue(newJWT, saLoginModel); // 自动根据 saToken 配置写入指定位置
         refreshToken = tokenService.generateRefreshToken();
         RefreshToken newRefreshTokenObj = tokenService.createNewRefreshTokenBasedOnOld(fetchRefreshTokenObj, jti);
-        tokenService.writeRefreshTokenToCookies(response, refreshToken);
+        tokenService.writeTokenToCookies(response, refreshToken, "refreshToken");
         // 将新 refreshToken 和 新 反向索引 写入 Redis
         tokenService.storeRefreshTokenToRedis(refreshToken, newRefreshTokenObj);
         tokenService.buildReverseIndex(fetchRefreshTokenObj.getUserId(), refreshToken);
@@ -251,6 +275,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public boolean isAdmin(User user) {
         return user != null && user.getUserRole().equals(UserRoleEnum.ADMIN.getValue());
+    }
+
+    @Override
+    public void getOnceToken(HttpServletResponse response) {
+        long userId = StpUtil.getLoginIdAsLong();
+        String key = RedisKeyConstant.ONCE_TOKEN_PREFIX + userId;
+        ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
+        String uuid = UUID.randomUUID().toString();
+        // 产生一次性令牌并写入 redis 和 cookie。
+        operations.set(key, uuid);
+        tokenService.writeTokenToCookies(response, uuid, "onceToken");
+        log.debug("成功写入");
     }
 }
 

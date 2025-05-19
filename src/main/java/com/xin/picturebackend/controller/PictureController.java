@@ -7,6 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
+import com.xin.picturebackend.annotation.OnceTokenRequired;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.xin.picturebackend.apiintegration.aliyunai.model.GetOutPaintingTaskResponse;
@@ -60,6 +61,7 @@ public class PictureController {
     /**
      * 上传图片（可重新上传）
      */
+    @OnceTokenRequired
     @PostMapping("/upload")
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
