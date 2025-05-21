@@ -149,6 +149,14 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- MySQL 5.7 JDBC 驱动 -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.49</version> <!-- 推荐使用 MySQL 5.7 的兼容版本 -->
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -204,7 +212,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.xin.picturebackend.PictureBackendApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>

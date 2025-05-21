@@ -29,7 +29,8 @@ public class RedissonConfig {
         config.useSingleServer()
                 .setAddress("redis://" + redisProperties.getHost() + ":" + redisProperties.getPort())
                 .setDatabase(redisProperties.getDatabase())
-                .setTimeout(Math.toIntExact(redisProperties.getTimeout().toMillis()));
+                .setTimeout(Math.toIntExact(redisProperties.getTimeout().toMillis()))
+                .setPassword(redisProperties.getPassword());
         return Redisson.create(config);
     }
 }

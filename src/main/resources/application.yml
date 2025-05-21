@@ -19,7 +19,7 @@ spring:
     multipart:
       max-file-size: 10MB
   profiles:
-    active: local
+    active: prod
   redis:
     host: 192.168.200.100
     port: 6379
@@ -47,19 +47,13 @@ mybatis-plus:
 # swagger增强knife4j
 knife4j:
   enable: true
-  openapi:
-    title: "接口文档"
-    version: 1.0
-    group:
-      default:
-        api-rule: package
-        api-rule-resources:
-          - com.xin.picturebackend.controller
-
+  basic:
+    username: root
+    password: REDACTED_KNIFE4J_PASSWORD
 # 日志级别修改
 logging:
   level:
-    com.xin.picturebackend: debug
+    com.xin.picturebackend: error
 
 # 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
