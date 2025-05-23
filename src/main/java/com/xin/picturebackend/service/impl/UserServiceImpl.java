@@ -121,6 +121,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             log.error("user login fail, userAccount:{}, userPassword:{}", userAccount, userPassword);
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名或密码错误！");
         }
+        // 2.1 校验用户是否已经登录。
+        tokenService.checkLoginState(user.getId());
         // 3. 生成 JWT，默认将 JWT 写入 Cookie;
         String jti = IdUtil.randomUUID();
         StpUtil.login(user.getId(), SaLoginConfig

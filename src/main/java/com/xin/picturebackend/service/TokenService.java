@@ -41,4 +41,6 @@ public interface TokenService {
     void addIntoBlackList(String jti, long userId);
 
     boolean notInJWTBlacklist(String jti, Long userId);
+
+    void checkLoginState(Long id);
 }

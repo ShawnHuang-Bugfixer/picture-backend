@@ -1,6 +1,7 @@
 package com.xin.picturebackend.service.impl;
 
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -209,16 +210,36 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void addIntoBlackList(String jti, long userId) {
-        String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId;
+        // 每个 jti 单独一个 key，可以精确控制每个 token 的过期时间。
+        String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId + ":" + jti;
         ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
-        operations.set(key, jti, JWTRedisTTL, TimeUnit.SECONDS);
+        operations.set(key, "1", JWTRedisTTL, TimeUnit.SECONDS);  // value无意义，ttl控制有效期
     }
 
     @Override
     public boolean notInJWTBlacklist(String jti, Long userId) {
-        String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId;
+        String key = RedisKeyConstant.JWT_BLACKLIST_PREFIX + userId + ":" + jti;
+        return !Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
+    }
+
+    /**
+     * 构造 user_refresh_token:{userId} 获取 refresh token，
+     * 利用 refresh token 构造 refresh_token:{refresh token}
+     * 获取 refreshToken 对象并提取 jti，将 jti 加入黑名单。
+     * @param id
+     */
+    @Override
+    public void checkLoginState(Long id) {
+        String reverseKey = RedisKeyConstant.REVERSE_INDEX_PREFIX + id;
         ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
-        String s = operations.get(key);
-        return s == null || !s.equals(jti);
+        String refreshToken = operations.get(reverseKey);
+        if (!StrUtil.isNotEmpty(refreshToken)) return;
+        String refreshTokenKey = RedisKeyConstant.REFRESH_TOKEN_KEY_PREFIX + refreshToken;
+        String refreshTokenJSON = operations.get(refreshTokenKey);
+        RefreshToken refreshTokenObj = JSONUtil.toBean(refreshTokenJSON, RefreshToken.class);
+        if (!ObjUtil.isNotNull(refreshTokenObj)) return;
+        String jti = refreshTokenObj.getJti();
+        addIntoBlackList(jti, id);
+        removeRefreshTokenAndReverseIndex(id);
     }
 }
