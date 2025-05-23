@@ -222,7 +222,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Long id = loginUser.getId();
         space.setUserId(id);
         // 权限校验:管理员才能指定空间级别
-        if (SpaceLevelEnum.COMMON.getValue() != space.getSpaceType() && !userService.isAdmin(loginUser)) {
+        if (SpaceLevelEnum.COMMON.getValue() != space.getSpaceLevel() && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限创建指定级别的空间");
         }
         // 保证用户私有空间唯一
