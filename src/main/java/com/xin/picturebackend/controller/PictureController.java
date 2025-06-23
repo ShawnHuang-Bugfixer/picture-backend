@@ -160,7 +160,16 @@ public class PictureController {
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<PictureVO>> listPictureVOByPage(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
-        Page<PictureVO> pageResult = pictureService.listPictureVoByPage(pictureQueryRequest, request);
+        Page<PictureVO> pageResult = pictureService.listPictureVoByPage(pictureQueryRequest, request, false);
+        return ResultUtils.success(pageResult);
+    }
+
+    /**
+     * 分页查询用户自己的图片列表（包含待审核内容）
+     */
+    @PostMapping("/list/page/my/vo")
+    public BaseResponse<Page<PictureVO>> listMyPictureVOByPage(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
+        Page<PictureVO> pageResult = pictureService.listPictureVoByPage(pictureQueryRequest, request, true);
         return ResultUtils.success(pageResult);
     }
 
@@ -254,4 +263,6 @@ public class PictureController {
         GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
         return ResultUtils.success(task);
     }
+
+
 }

@@ -120,6 +120,11 @@ public class PictureVO implements Serializable {
      */
     private Integer spaceType;
 
+    /**
+     * 状态：0-待审核; 1-通过; 2-拒绝
+     */
+    private Integer reviewStatus;
+
     @Serial
     private static final long serialVersionUID = 1L;
 

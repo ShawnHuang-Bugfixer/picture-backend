@@ -70,7 +70,7 @@ public interface PictureService extends IService<Picture> {
 
     void updatePicture(PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request);
 
-    Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request);
+    Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request, boolean checkMy);
 
     @Async
     void clearPictureFile(Picture oldPicture);

@@ -604,7 +604,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                     )
             }
     )
-    public Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
+    public Page<PictureVO> listPictureVoByPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request, boolean checkMy) {
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
         Long spaceId = pictureQueryRequest.getSpaceId();
@@ -626,6 +626,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 StpUtil.checkPermission(PermissionConstants.TEAM_VIEW_IMAGE);
             }
         }
+
+        if (checkMy) {
+            pictureQueryRequest.setReviewStatus(null);
+            pictureQueryRequest.setNullSpaceId(true);
+        }
+
         // 查询数据库
         // 使用分布式锁替代synchronized
         RLock lock = redissonClient.getLock("picture:PAGE_LOCK:" + current);
