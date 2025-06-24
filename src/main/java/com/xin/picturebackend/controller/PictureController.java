@@ -264,5 +264,15 @@ public class PictureController {
         return ResultUtils.success(task);
     }
 
-
+    /**
+     * 上传头像
+     */
+    @PostMapping("/upload/avatar")
+    public BaseResponse<String> uploadUserAvatarPicture(
+            @RequestPart("file") MultipartFile multipartFile,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String avatarUrl = pictureService.uploadUserAvatarPicture(multipartFile, loginUser);
+        return ResultUtils.success(avatarUrl);
+    }
 }

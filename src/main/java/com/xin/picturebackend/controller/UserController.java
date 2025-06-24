@@ -212,4 +212,9 @@ public class UserController {
         userService.getOnceToken(response);
         return ResultUtils.success(true);
     }
+
+    @PostMapping("/update/info")
+    public BaseResponse<Boolean> updateUserInfo(@RequestBody UserUpdateRequest userUpdateRequest) {
+        return userService.updateUserInfo(userUpdateRequest);
+    }
 }

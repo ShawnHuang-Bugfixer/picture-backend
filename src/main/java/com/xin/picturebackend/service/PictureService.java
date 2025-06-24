@@ -83,4 +83,6 @@ public interface PictureService extends IService<Picture> {
     void editPicture(PictureEditRequest pictureEditRequest, HttpServletRequest request);
 
     int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
+
+    String uploadUserAvatarPicture(MultipartFile multipartFile, User loginUser);
 }

@@ -1,7 +1,9 @@
 package com.xin.picturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.model.dto.user.UserQueryRequest;
+import com.xin.picturebackend.model.dto.user.UserUpdateRequest;
 import com.xin.picturebackend.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xin.picturebackend.model.vo.LoginUserVO;
@@ -49,4 +51,6 @@ public interface UserService extends IService<User> {
     boolean refreshJWT(HttpServletRequest request, HttpServletResponse response);
 
     void getOnceToken(HttpServletResponse response);
+
+    BaseResponse<Boolean> updateUserInfo(UserUpdateRequest userUpdateRequest);
 }

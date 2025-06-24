@@ -12,12 +12,15 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xin.picturebackend.common.BaseResponse;
+import com.xin.picturebackend.common.ResultUtils;
 import com.xin.picturebackend.config.CookiesProperties;
 import com.xin.picturebackend.constant.RedisKeyConstant;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.UserQueryRequest;
+import com.xin.picturebackend.model.dto.user.UserUpdateRequest;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.UserRoleEnum;
 import com.xin.picturebackend.model.vo.LoginUserVO;
@@ -289,6 +292,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         operations.set(key, uuid);
         tokenService.writeTokenToCookies(response, uuid, "onceToken");
         log.debug("成功写入");
+    }
+
+    @Override
+    public BaseResponse<Boolean> updateUserInfo(UserUpdateRequest userUpdateRequest) {
+        StpUtil.checkLogin();
+        long loginId = StpUtil.getLoginIdAsLong();
+        if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数错误！");
+        }
+        if (userUpdateRequest.getId() != loginId) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权修改他人信息！");
+        }
+        if (userUpdateRequest.getUserRole() != null) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权修改用户角色");
+        }
+        User user = new User();
+        BeanUtils.copyProperties(userUpdateRequest, user);
+        boolean result = updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
     }
 }
 

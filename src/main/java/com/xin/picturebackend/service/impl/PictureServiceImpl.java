@@ -11,6 +11,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.qcloud.cos.exception.CosClientException;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
@@ -31,7 +32,6 @@ import com.xin.picturebackend.model.entity.Imagesearchhistory;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.auth.enums.PermissionEnum;
 import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.PictureVO;
@@ -52,6 +52,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -123,6 +124,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private SearchPicturesAPI searchPicturesAPI;
+
+    @Value("${cos.client.host}")
+    private String cosClientHost;
 
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
@@ -811,11 +815,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return keyPrefix + fileExtension;
     }
 
-    private static String cosKeyHandler(String url) {
-        String COS_PREFIX_URL = "https://huang-picture-1345225028.cos.ap-chengdu.myqcloud.com";
-        ThrowUtils.throwIf(!url.contains(COS_PREFIX_URL), ErrorCode.PARAMS_ERROR, "cosKey 处理错误，url 错误");
-        int i = url.indexOf(COS_PREFIX_URL);
-        return url.substring(i + COS_PREFIX_URL.length());
+    private String cosKeyHandler(String url) {
+        ThrowUtils.throwIf(!url.contains(cosClientHost), ErrorCode.PARAMS_ERROR, "cosKey 处理错误，url 错误");
+        int i = url.indexOf(cosClientHost);
+        return url.substring(i + cosClientHost.length());
     }
 
     /**
@@ -914,6 +917,31 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             pictureVO.setSpaceType(dbSpace.getSpaceType());
         }
         return pictureVO;
+    }
+
+    @Override
+    public String uploadUserAvatarPicture(MultipartFile multipartFile, User loginUser) {
+        User user = userService.getById(loginUser.getId());
+        if (ObjUtil.isNull(user)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "登录用户不存在！");
+        // COS 中用户头像存储位置。
+        String uploadPrefix = String.format("userAvatar/%s", user.getId());
+        UploadPictureResult uploadPictureResult = filePictureUploader.uploadPicture(multipartFile, uploadPrefix);
+        String oldAvatarUrl = user.getUserAvatar();
+        // 从参数中拿到 user 头像 url 并写入 user 表的 avatar 字段。
+        String avatarUrl = uploadPictureResult.getUrl();
+        user.setUserAvatar(avatarUrl);
+        userService.updateById(user);
+        // 删除 COS 中头像
+        try {
+            String webpKey = cosKeyHandler(oldAvatarUrl); // /public/1894627889584680961/2025-03-30_Sgs8ncAK9jWzgFpc.webp
+            String thumbnailKey = webpKey.replace(".webp", "_thumbnail.png");
+            String originKey = cosOriginKeyHandler(webpKey, thumbnailKey);
+            cosManager.deleteObject(webpKey);
+            cosManager.deleteObject(originKey);
+            cosManager.deleteObject(thumbnailKey);
+        } catch (Exception e) {
+        }
+        return avatarUrl;
     }
 }
 
