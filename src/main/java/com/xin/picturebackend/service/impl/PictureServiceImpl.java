@@ -464,8 +464,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             namePrefix = searchText;
         }
         PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-        pictureUploadRequest.setPicName(namePrefix + uuid.substring(0, 8));
+//        String uuid = UUID.randomUUID().toString().replace("-", "");
+        pictureUploadRequest.setPicName(namePrefix);
         List<String> urlList = searchPicturesAPI.searchPicturesUrls(searchText, first, count, "zh");
         log.info("开始遍历上传 urlList = {}", urlList);
         for (String url : urlList) {

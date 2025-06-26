@@ -2,7 +2,7 @@ package com.xin.picturebackend.manager.websocket.disruptor;
 
 import cn.hutool.json.JSONUtil;
 import com.lmax.disruptor.WorkHandler;
-import com.xin.picturebackend.manager.websocket.PictureEditHandler;
+import com.xin.picturebackend.manager.websocket.handler.PictureEditHandler;
 import com.xin.picturebackend.manager.websocket.model.PictureEditMessageTypeEnum;
 import com.xin.picturebackend.manager.websocket.model.PictureEditRequestMessage;
 import com.xin.picturebackend.manager.websocket.model.PictureEditResponseMessage;
