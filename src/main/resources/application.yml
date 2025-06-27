@@ -84,3 +84,6 @@ app:
         name: sec_token
         max-age: 240
         path: "/"
+  retry:
+    event:
+      max: 3

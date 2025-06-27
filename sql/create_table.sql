@@ -66,7 +66,7 @@ ALTER TABLE picture
 
 -- 修改图片表，新增空间列
 ALTER TABLE picture
-    ADD COLUMN spaceId  bigint  null comment '空间 id（为空表示公共空间）';
+    ADD COLUMN spaceId bigint null comment '空间 id（为空表示公共空间）';
 
 -- 修改图片表，新增主色调
 ALTER TABLE picture
@@ -135,6 +135,43 @@ create table if not exists space_user
     INDEX idx_spaceId (spaceId),                    -- 提升按空间查询的性能
     INDEX idx_userId (userId)                       -- 提升按用户查询的性能
 ) comment '空间用户关联' collate = utf8mb4_unicode_ci;
+
+-- 审核消息表
+CREATE TABLE review_message
+(
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    user_id    BIGINT NOT NULL COMMENT '接收用户 ID',
+    content    TEXT   NOT NULL COMMENT '消息内容',
+    status     TINYINT  DEFAULT 0 COMMENT '消息状态：0=未读，1=已读',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    read_at    DATETIME DEFAULT NULL COMMENT '阅读时间',
+
+    INDEX idx_user_id (user_id)
+) COMMENT ='审核消息表';
+
+-- 活动消息表
+CREATE TABLE event_message
+(
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '活动消息模板 ID',
+    title      VARCHAR(100) NOT NULL COMMENT '消息标题',
+    content    TEXT         NOT NULL COMMENT '消息内容',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    expire_at  DATETIME DEFAULT NULL COMMENT '过期时间（可选）'
+) COMMENT ='活动消息模板表';
+
+-- 关联表
+CREATE TABLE user_event_message
+(
+    id               BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    user_id          BIGINT NOT NULL COMMENT '接收用户 ID',
+    event_message_id BIGINT NOT NULL COMMENT '活动消息模板 ID',
+    status           TINYINT  DEFAULT 0 COMMENT '消息状态：0=未读，1=已读',
+    read_at          DATETIME DEFAULT NULL COMMENT '阅读时间',
+
+    UNIQUE KEY uniq_user_event (user_id, event_message_id),
+    INDEX idx_event_id (event_message_id)
+) COMMENT ='用户接收的活动消息关联表';
+
 
 
 

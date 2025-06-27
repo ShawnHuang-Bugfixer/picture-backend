@@ -73,7 +73,7 @@ public class HotKeyAspect {
         });
     }
 
-    @Async
+    @Async("cacheWarmupExecutor")
     public void promoteToCaffeine(String[] cacheNames, String key) {
         for (String cacheName : cacheNames) {
             log.debug("put hot key: {} into caffeine: {}", key, cacheName);

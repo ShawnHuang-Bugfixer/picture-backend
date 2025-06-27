@@ -653,7 +653,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return new Page<>();
     }
 
-    @Async
+    @Async("cosCleanupExecutor")
     @Override
     public void clearPictureFile(Picture picture) {
         // 判断该图片是否被多条记录使用

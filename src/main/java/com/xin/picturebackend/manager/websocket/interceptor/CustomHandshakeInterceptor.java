@@ -1,6 +1,5 @@
 package com.xin.picturebackend.manager.websocket.interceptor;
 
-import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
@@ -11,7 +10,6 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import javax.annotation.Nonnull;
-import javax.annotation.RegEx;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
