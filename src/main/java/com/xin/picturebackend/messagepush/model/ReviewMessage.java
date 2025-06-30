@@ -29,7 +29,7 @@ public class ReviewMessage implements IMessage {
 
     @Override
     public String getType() {
-        return "REVIEW";
+        return MessageType.REVIEW.getValue();
     }
 
     @Override

@@ -1,14 +1,15 @@
 package com.xin.picturebackend.messagepush.eventhandler;
 
+import com.xin.picturebackend.config.rabbitmq.MQConstants;
 import com.xin.picturebackend.messagepush.model.IMessage;
 import com.xin.picturebackend.messagepush.model.MessageEvent;
+import com.xin.picturebackend.messagepush.model.MessageType;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.RejectedExecutionException;
+import javax.annotation.Resource;
 
 /**
  * @author 黄兴鑫
@@ -17,10 +18,8 @@ import java.util.concurrent.RejectedExecutionException;
 @Slf4j
 @Component
 public class EventHandler {
-    @Value("${app.retry.event.max}")
-    private int maxRetries;
-    private int retryCount = 0;
-    private boolean success = false;
+    @Resource
+    private AmqpTemplate amqpTemplate;
 
     @Async("messageEventExecutor")
     @EventListener
@@ -29,23 +28,15 @@ public class EventHandler {
     }
 
     private void handleMessage(MessageEvent event) {
-        while (retryCount < maxRetries && !success) {
-            try {
-                IMessage message = event.getMessage();
-                success = true; // 标记成功
-            } catch (Exception e) {
-                retryCount++;
-                log.warn("Attempt {} failed: {}", retryCount, e.getMessage());
-                sleep(500L * retryCount); // 指数退避
-            }
-        }
-    }
+        IMessage message = event.getMessage();
+        amqpTemplate.convertAndSend(MQConstants.EXCHANGE, MQConstants.ROUTING_AUDIT, message);
+        String type = message.getType();
+        if (type.equals(MessageType.ACTIVITY.getValue())) {
+            // 1. 活动类型消息，需要写入两张表。
 
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ignored) {
-            Thread.currentThread().interrupt();
+        } else {
+            // 2. 审核类型消息，需要写入一张表。
+
         }
     }
 }

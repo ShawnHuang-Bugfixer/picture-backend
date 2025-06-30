@@ -23,7 +23,7 @@ public class ActivityMessage implements IMessage {
 
     @Override
     public String getType() {
-        return "activity";
+        return MessageType.ACTIVITY.getValue();
     }
 
     @Override

@@ -6,7 +6,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -23,7 +22,7 @@ public class AsyncConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);      // 常驻2线程（适合2核CPU）
         executor.setMaxPoolSize(3);       // 最大3线程（峰值时短暂扩容）
-        executor.setQueueCapacity(10);    // 堆积10个任务
+        executor.setQueueCapacity(5);    // 堆积10个任务
         executor.setThreadNamePrefix("cos-cleanup-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy()); // 改为调用者处理
         executor.initialize();
@@ -33,9 +32,9 @@ public class AsyncConfig {
     @Bean(name = "messageEventExecutor")
     public Executor messageEventExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);  // 2核CPU建议核心线程数不超过2
-        executor.setMaxPoolSize(2);   // 最大线程数=CPU核心数
-        executor.setQueueCapacity(10); // 较小的队列（避免积压）
+        executor.setCorePoolSize(2);  // 2核CPU建议核心线程数不超过2
+        executor.setMaxPoolSize(3);   //
+        executor.setQueueCapacity(1); //
         executor.setThreadNamePrefix("msg-event-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy()); // 直接抛出异常
         executor.initialize();
