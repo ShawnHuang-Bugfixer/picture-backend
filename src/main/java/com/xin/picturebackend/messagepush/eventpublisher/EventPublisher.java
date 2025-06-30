@@ -45,7 +45,7 @@ public class EventPublisher {
                 if (retryCount > maxTimes) {
                     // 超过最大重试次数，进入死信队列。
                     String routingKey = MQConstants.DLQ_AUDIT;
-                    if (message.getType().equals(MessageType.ACTIVITY.getValue())) routingKey = MQConstants.DLQ_ACTIVITY;
+                    if (message.getType().equals(MessageType.REVIEW.getValue())) routingKey = MQConstants.DLQ_AUDIT;
                     amqpTemplate.convertAndSend(MQConstants.DLX_EXCHANGE, routingKey, message);
                     log.warn("发布事件重试次数超过{} 次！异常信息：{}, 当前线程 {}", maxTimes, e, Thread.currentThread().getName());
                     break;

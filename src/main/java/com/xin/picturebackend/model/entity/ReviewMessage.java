@@ -3,7 +3,12 @@ package com.xin.picturebackend.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
+import java.time.LocalDateTime;
 import java.util.Date;
+
+import com.xin.picturebackend.messagepush.model.IMessage;
+import com.xin.picturebackend.messagepush.model.MessageType;
 import lombok.Data;
 
 /**
@@ -12,7 +17,7 @@ import lombok.Data;
  */
 @TableName(value ="review_message")
 @Data
-public class ReviewMessage {
+public class ReviewMessage implements IMessage {
     /**
      * 主键
      */
@@ -43,4 +48,14 @@ public class ReviewMessage {
      * 阅读时间
      */
     private Date read_at;
+
+    @Override
+    public String getType() {
+        return MessageType.REVIEW.getValue();
+    }
+
+    @Override
+    public Date getTimestamp() {
+        return created_at;
+    }
 }

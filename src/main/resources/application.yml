@@ -65,9 +65,9 @@ knife4j:
     username: root
     password: REDACTED_KNIFE4J_PASSWORD
 # 日志级别修改
-logging:
-  level:
-    com.xin.picturebackend: debug
+#logging:
+#  level:
+#    com.xin.picturebackend: debug
 # 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
   hotkey:

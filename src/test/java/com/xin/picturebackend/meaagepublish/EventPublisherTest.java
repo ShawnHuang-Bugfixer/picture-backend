@@ -1,7 +1,7 @@
-package com.xin.picturebackend;
+package com.xin.picturebackend.meaagepublish;
 
 import com.xin.picturebackend.messagepush.eventpublisher.EventPublisher;
-import com.xin.picturebackend.messagepush.model.ReviewMessage;
+import com.xin.picturebackend.model.entity.ReviewMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,9 +22,12 @@ public class EventPublisherTest {
     @Test
     void test() {
         ArrayList<Thread> threads = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 30; i++) {
             Thread thread = new Thread(() -> {
-                eventPublisher.publishMessage(new ReviewMessage(1L, "test 这是测试, 来自线程：" + Thread.currentThread().getName()));
+                ReviewMessage reviewMessage = new ReviewMessage();
+                reviewMessage.setUser_id(123456L);
+                reviewMessage.setContent("message from thread" + Thread.currentThread().getName());
+                eventPublisher.publishMessage(reviewMessage);
             }, "thread---" + i);
             threads.add(thread);
             thread.start();

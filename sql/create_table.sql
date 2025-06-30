@@ -149,29 +149,30 @@ CREATE TABLE review_message
     INDEX idx_user_id (user_id)
 ) COMMENT ='审核消息表';
 
--- 活动消息表
-CREATE TABLE event_message
-(
-    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '活动消息模板 ID',
-    title      VARCHAR(100) NOT NULL COMMENT '消息标题',
-    content    TEXT         NOT NULL COMMENT '消息内容',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    expire_at  DATETIME DEFAULT NULL COMMENT '过期时间（可选）'
-) COMMENT ='活动消息模板表';
+# -- 活动消息表
+# CREATE TABLE event_message
+# (
+#     id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '活动消息模板 ID',
+#     title      VARCHAR(100) NOT NULL COMMENT '消息标题',
+#     content    TEXT         NOT NULL COMMENT '消息内容',
+#     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+#     expire_at  DATETIME DEFAULT NULL COMMENT '过期时间（可选）'
+# ) COMMENT ='活动消息模板表';
+#
+# -- 关联表
+# CREATE TABLE user_event_message
+# (
+#     id               BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+#     user_id          BIGINT NOT NULL COMMENT '接收用户 ID',
+#     event_message_id BIGINT NOT NULL COMMENT '活动消息模板 ID',
+#     status           TINYINT  DEFAULT 0 COMMENT '消息状态：0=未读，1=已读',
+#     read_at          DATETIME DEFAULT NULL COMMENT '阅读时间',
+#
+#     UNIQUE KEY uniq_user_event (user_id, event_message_id),
+#     INDEX idx_event_id (event_message_id)
+# ) COMMENT ='用户接收的活动消息关联表';
 
--- 关联表
-CREATE TABLE user_event_message
-(
-    id               BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
-    user_id          BIGINT NOT NULL COMMENT '接收用户 ID',
-    event_message_id BIGINT NOT NULL COMMENT '活动消息模板 ID',
-    status           TINYINT  DEFAULT 0 COMMENT '消息状态：0=未读，1=已读',
-    read_at          DATETIME DEFAULT NULL COMMENT '阅读时间',
-
-    UNIQUE KEY uniq_user_event (user_id, event_message_id),
-    INDEX idx_event_id (event_message_id)
-) COMMENT ='用户接收的活动消息关联表';
-
-
+drop table if exists event_message;
+drop table if exists user_event_message;
 
 

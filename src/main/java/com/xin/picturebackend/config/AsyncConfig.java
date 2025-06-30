@@ -34,7 +34,7 @@ public class AsyncConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);  // 2核CPU建议核心线程数不超过2
         executor.setMaxPoolSize(3);   //
-        executor.setQueueCapacity(1); //
+        executor.setQueueCapacity(50); //
         executor.setThreadNamePrefix("msg-event-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy()); // 直接抛出异常
         executor.initialize();

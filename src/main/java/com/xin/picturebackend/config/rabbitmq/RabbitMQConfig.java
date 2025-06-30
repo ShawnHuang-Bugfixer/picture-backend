@@ -35,23 +35,23 @@ public class RabbitMQConfig {
                 .build();
     }
 
-    @Bean
-    public Queue activityQueue() {
-        return QueueBuilder.durable(MQConstants.ACTIVITY_QUEUE)
-                .withArgument("x-dead-letter-exchange", MQConstants.DLX_EXCHANGE)
-                .withArgument("x-dead-letter-routing-key", MQConstants.DLQ_ACTIVITY)
-                .build();
-    }
+//    @Bean
+//    public Queue activityQueue() {
+//        return QueueBuilder.durable(MQConstants.ACTIVITY_QUEUE)
+//                .withArgument("x-dead-letter-exchange", MQConstants.DLX_EXCHANGE)
+//                .withArgument("x-dead-letter-routing-key", MQConstants.DLQ_ACTIVITY)
+//                .build();
+//    }
 
     @Bean
     public Queue dlqAuditQueue() {
         return QueueBuilder.durable(MQConstants.DLQ_AUDIT).build();
     }
 
-    @Bean
-    public Queue dlqActivityQueue() {
-        return QueueBuilder.durable(MQConstants.DLQ_ACTIVITY).build();
-    }
+//    @Bean
+//    public Queue dlqActivityQueue() {
+//        return QueueBuilder.durable(MQConstants.DLQ_ACTIVITY).build();
+//    }
 
     @Bean
     public Binding auditBinding() {
@@ -60,12 +60,12 @@ public class RabbitMQConfig {
                 .with(MQConstants.ROUTING_AUDIT);
     }
 
-    @Bean
-    public Binding activityBinding() {
-        return BindingBuilder.bind(activityQueue())
-                .to(messageExchange())
-                .with(MQConstants.ROUTING_ACTIVITY);
-    }
+//    @Bean
+//    public Binding activityBinding() {
+//        return BindingBuilder.bind(activityQueue())
+//                .to(messageExchange())
+//                .with(MQConstants.ROUTING_ACTIVITY);
+//    }
 
     @Bean
     public Binding dlqAuditBinding() {
@@ -74,11 +74,11 @@ public class RabbitMQConfig {
                 .with(MQConstants.DLQ_AUDIT);
     }
 
-    @Bean
-    public Binding dlqActivityBinding() {
-        return BindingBuilder.bind(dlqActivityQueue())
-                .to(dlxExchange())
-                .with(MQConstants.DLQ_ACTIVITY);
-    }
+//    @Bean
+//    public Binding dlqActivityBinding() {
+//        return BindingBuilder.bind(dlqActivityQueue())
+//                .to(dlxExchange())
+//                .with(MQConstants.DLQ_ACTIVITY);
+//    }
 }
 
