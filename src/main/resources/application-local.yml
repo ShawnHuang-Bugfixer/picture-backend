@@ -1,16 +1,13 @@
-# 对象存储配置（需要从腾讯云获取）
 cos:
   client:
-    host: https://huang-picture-1345225028.cos.ap-chengdu.myqcloud.com
-    secretId: REMOVED_SECRET_ID
-    secretKey: REMOVED_SECRET_KEY
-    region: ap-chengdu
-    bucket: huang-picture-1345225028
+    host:
+    secretId:  # 在环境变量或配置文件中配置
+    secretKey:  # 在环境变量或配置文件中配置
+    region:
+    bucket:
 
-# aLiYun AI
 aliYunAi:
-  apiKey: REMOVED_API_KEY
+  apiKey:  # 在环境变量或配置文件中配置
 
-# pixabay API
 pixabay:
-  apiKey: REMOVED_PIXABAY_API_KEY
+  apiKey:  # 在环境变量或配置文件中配置
