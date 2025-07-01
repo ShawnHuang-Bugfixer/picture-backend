@@ -1,10 +1,10 @@
 package com.xin.picturebackend.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 
 import com.xin.picturebackend.messagepush.model.IMessage;
@@ -27,7 +27,8 @@ public class ReviewMessage implements IMessage {
     /**
      * 接收用户 ID
      */
-    private Long user_id;
+    @TableField("user_id")
+    private Long userId;
 
     /**
      * 消息内容
@@ -42,12 +43,14 @@ public class ReviewMessage implements IMessage {
     /**
      * 创建时间
      */
-    private Date created_at;
+    @TableField("created_at")
+    private Date createdAt;
 
     /**
      * 阅读时间
      */
-    private Date read_at;
+    @TableField("read_at")
+    private Date readAt;
 
     @Override
     public String getType() {
@@ -56,6 +59,6 @@ public class ReviewMessage implements IMessage {
 
     @Override
     public Date getTimestamp() {
-        return created_at;
+        return createdAt;
     }
 }

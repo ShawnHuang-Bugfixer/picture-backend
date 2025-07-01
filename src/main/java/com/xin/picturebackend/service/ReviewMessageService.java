@@ -3,6 +3,8 @@ package com.xin.picturebackend.service;
 import com.xin.picturebackend.model.entity.ReviewMessage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
 * @author Lenovo
 * @description 针对表【review_message(审核消息表)】的数据库操作Service
@@ -10,4 +12,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 */
 public interface ReviewMessageService extends IService<ReviewMessage> {
 
+    void markAsRead(Long msgId);
+
+    List<ReviewMessage> getUnreadMessages(Long userId);
+
+    Long getUnreadMessageNum(Long id);
 }

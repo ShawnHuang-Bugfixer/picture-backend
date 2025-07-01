@@ -17,7 +17,7 @@ spring:
         concurrency: 2        # 最小并发消费者数
         max-concurrency: 3   # 最大并发消费者数
         prefetch: 1           # 每次只拉取一个消息
-        acknowledge-mode: manual # 手动 ack，便于确认处理成功再签收
+        acknowledge-mode: auto
   profiles:
     active: local
   jackson:

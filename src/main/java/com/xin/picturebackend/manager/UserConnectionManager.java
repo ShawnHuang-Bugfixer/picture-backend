@@ -18,13 +18,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UserConnectionManager {
     private final ConcurrentHashMap<Long, UserConnectionState> connections = new ConcurrentHashMap<>();
 
-    public synchronized void register(Long userId, ConnectionType type, Object connectionRef) {
+    public synchronized boolean register(Long userId, ConnectionType type, Object connectionRef) {
         UserConnectionState existing = connections.get(userId);
         // 优先使用 WebSocket，如果已有 WebSocket 则忽略 SSE
         if (existing != null && existing.getType() == ConnectionType.WEBSOCKET && type == ConnectionType.SSE) {
-            return; // 拒绝降级注册
+            return false; // 拒绝降级注册
         }
         connections.put(userId, new UserConnectionState(userId, type, connectionRef, Instant.now()));
+        return true;
     }
 
     // 断开连接

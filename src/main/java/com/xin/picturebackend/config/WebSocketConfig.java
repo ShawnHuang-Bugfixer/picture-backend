@@ -2,7 +2,7 @@ package com.xin.picturebackend.config;
 
 import com.xin.picturebackend.manager.websocket.handler.PictureEditHandler;
 import com.xin.picturebackend.manager.websocket.handler.WebSocketHandler;
-import com.xin.picturebackend.manager.websocket.interceptor.CustomHandshakeInterceptor;
+import com.xin.picturebackend.manager.websocket.interceptor.MessageHandshakeInterceptor;
 import com.xin.picturebackend.manager.websocket.interceptor.WsHandshakeInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -27,7 +27,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private WsHandshakeInterceptor wsHandshakeInterceptor;
 
     @Resource
-    private CustomHandshakeInterceptor customHandshakeInterceptor;
+    private MessageHandshakeInterceptor customHandshakeInterceptor;
 
     @Resource
     private WebSocketHandler webSocketHandler;
@@ -39,7 +39,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*");
 
         // 消息推送
-        registry.addHandler(webSocketHandler, "/ws/connect")
+        registry.addHandler(webSocketHandler, "/ws/messagepush/connect")
                 .addInterceptors(customHandshakeInterceptor)
                 .setAllowedOrigins("*");
     }

@@ -25,7 +25,7 @@ public class EventPublisherTest {
         for (int i = 0; i < 30; i++) {
             Thread thread = new Thread(() -> {
                 ReviewMessage reviewMessage = new ReviewMessage();
-                reviewMessage.setUser_id(123456L);
+                reviewMessage.setUserId(123456L);
                 reviewMessage.setContent("message from thread" + Thread.currentThread().getName());
                 eventPublisher.publishMessage(reviewMessage);
             }, "thread---" + i);

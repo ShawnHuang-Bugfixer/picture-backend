@@ -1,5 +1,6 @@
 package com.xin.picturebackend.manager.websocket.interceptor;
 
+import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
@@ -21,7 +22,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class CustomHandshakeInterceptor implements HandshakeInterceptor {
+public class MessageHandshakeInterceptor implements HandshakeInterceptor {
     @Resource
     private UserService userService;
 
@@ -30,8 +31,8 @@ public class CustomHandshakeInterceptor implements HandshakeInterceptor {
                                    @Nonnull WebSocketHandler wsHandler,
                                    @Nonnull Map<String, Object> attributes) throws Exception {
         HttpServletRequest servletRequest = ((ServletServerHttpRequest) request).getServletRequest();
-//        User loginUser = userService.getLoginUser(servletRequest);
-        attributes.put("userId", 123);
+        User loginUser = userService.getLoginUser(servletRequest);
+        attributes.put("userId", loginUser.getId());
         return true;
     }
 
