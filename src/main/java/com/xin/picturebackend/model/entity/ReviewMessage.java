@@ -24,6 +24,9 @@ public class ReviewMessage implements IMessage {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @TableField(exist = false)
+    private final String type = MessageType.REVIEW.getValue();
+
     /**
      * 接收用户 ID
      */
@@ -54,7 +57,7 @@ public class ReviewMessage implements IMessage {
 
     @Override
     public String getType() {
-        return MessageType.REVIEW.getValue();
+        return type;
     }
 
     @Override

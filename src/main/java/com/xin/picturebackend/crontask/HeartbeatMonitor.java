@@ -2,11 +2,13 @@ package com.xin.picturebackend.crontask;
 
 import com.xin.picturebackend.manager.UserConnectionManager;
 import com.xin.picturebackend.manager.connections.UserConnectionState;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.time.Duration;
@@ -24,18 +26,24 @@ public class HeartbeatMonitor {
     @Resource
     private UserConnectionManager connectionManager;
 
-    // 允许最大心跳间隔：60 秒
-    private static final Duration MAX_INACTIVE_DURATION = Duration.ofSeconds(60);
+    @Value("${app.heartbeat}")
+    private long maxInactiveSeconds;
 
-    @Scheduled(fixedDelay = 30000) // 每 30 秒执行一次
+    private Duration maxInactiveDuration;
+
+    @PostConstruct
+    public void init() {
+        this.maxInactiveDuration = Duration.ofSeconds(maxInactiveSeconds);
+    }
+
+    @Scheduled(fixedDelay = 30000)
     public void checkHeartbeat() {
         Instant now = Instant.now();
 
         for (Map.Entry<Long, UserConnectionState> entry : connectionManager.getAllConnections().entrySet()) {
             Long userId = entry.getKey();
             UserConnectionState state = entry.getValue();
-            if (Duration.between(state.getLastActive(), now).compareTo(MAX_INACTIVE_DURATION) > 0) {
-                // 超时，主动断开连接
+            if (Duration.between(state.getLastActive(), now).compareTo(maxInactiveDuration) > 0) {
                 Object conn = state.getConnectionRef();
                 if (conn instanceof WebSocketSession) {
                     try {
@@ -49,4 +57,5 @@ public class HeartbeatMonitor {
         }
     }
 }
+
 

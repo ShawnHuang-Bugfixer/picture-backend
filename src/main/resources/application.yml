@@ -70,6 +70,7 @@ knife4j:
 #    com.xin.picturebackend: debug
 # 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
+  heartbeat: 120 # websocket 心跳
   hotkey:
     detect:
       threshold: 100

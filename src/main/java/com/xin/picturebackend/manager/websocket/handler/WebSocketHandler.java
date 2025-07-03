@@ -32,10 +32,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
         Long userId = getUserIdFromSession(session);
         connectionManager.register(userId, ConnectionType.WEBSOCKET, session);
         Long unreadMessageNum = reviewMessageService.getUnreadMessageNum(userId);
-        MessageInfo messageInfo = new MessageInfo();
-        messageInfo.setInfo(unreadMessageNum.toString());
-        String responseJson = JSONUtil.toJsonStr(messageInfo);
-        session.sendMessage(new TextMessage(responseJson));
+        if (unreadMessageNum > 0) {
+            MessageInfo messageInfo = new MessageInfo();
+            messageInfo.setInfo(unreadMessageNum.toString());
+            String responseJson = JSONUtil.toJsonStr(messageInfo);
+            session.sendMessage(new TextMessage(responseJson));
+        }
     }
 
     @Override

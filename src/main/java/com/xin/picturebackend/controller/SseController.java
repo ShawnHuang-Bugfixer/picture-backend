@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.xin.picturebackend.manager.UserConnectionManager;
 import com.xin.picturebackend.manager.connections.ConnectionType;
 import com.xin.picturebackend.messagepush.model.MessageInfo;
+import com.xin.picturebackend.messagepush.model.MessageType;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.service.ReviewMessageService;
 import com.xin.picturebackend.service.UserService;
@@ -49,13 +50,15 @@ public class SseController {
 
         if (success) {
             Long unreadMessageNum = reviewMessageService.getUnreadMessageNum(userId);
-            MessageInfo messageInfo = new MessageInfo();
-            messageInfo.setInfo(unreadMessageNum.toString());
-            String responseJson = JSONUtil.toJsonStr(messageInfo);
-            try {
-                emitter.send(responseJson, MediaType.APPLICATION_JSON);
-            } catch (IOException e) {
-                connectionManager.unregister(userId);
+            if (unreadMessageNum > 0) {
+                MessageInfo messageInfo = new MessageInfo();
+                messageInfo.setInfo(unreadMessageNum.toString());
+                String responseJson = JSONUtil.toJsonStr(messageInfo);
+                try {
+                    emitter.send(responseJson, MediaType.APPLICATION_JSON);
+                } catch (IOException e) {
+                    connectionManager.unregister(userId);
+                }
             }
         }
 
