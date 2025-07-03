@@ -1,7 +1,5 @@
-package com.xin.picturebackend.manager;
+package com.xin.picturebackend.service.msgpush.connections;
 
-import com.xin.picturebackend.manager.connections.ConnectionType;
-import com.xin.picturebackend.manager.connections.UserConnectionState;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

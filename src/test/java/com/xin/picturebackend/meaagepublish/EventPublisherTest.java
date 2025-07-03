@@ -1,6 +1,6 @@
 package com.xin.picturebackend.meaagepublish;
 
-import com.xin.picturebackend.messagepush.eventpublisher.EventPublisher;
+import com.xin.picturebackend.service.msgpush.eventpublisher.EventPublisher;
 import com.xin.picturebackend.model.entity.ReviewMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;

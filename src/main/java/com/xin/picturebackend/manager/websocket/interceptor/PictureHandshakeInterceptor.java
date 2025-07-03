@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class WsHandshakeInterceptor implements HandshakeInterceptor {
+public class PictureHandshakeInterceptor implements HandshakeInterceptor {
     @Resource
     private UserService userService;
 

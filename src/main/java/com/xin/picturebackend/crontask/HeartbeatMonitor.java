@@ -1,7 +1,7 @@
 package com.xin.picturebackend.crontask;
 
-import com.xin.picturebackend.manager.UserConnectionManager;
-import com.xin.picturebackend.manager.connections.UserConnectionState;
+import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
+import com.xin.picturebackend.service.msgpush.connections.UserConnectionState;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

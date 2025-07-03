@@ -7,8 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.util.Date;
 
-import com.xin.picturebackend.messagepush.model.IMessage;
-import com.xin.picturebackend.messagepush.model.MessageType;
+import com.xin.picturebackend.service.msgpush.model.IMessage;
+import com.xin.picturebackend.service.msgpush.model.MessageType;
 import lombok.Data;
 
 /**

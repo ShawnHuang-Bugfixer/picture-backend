@@ -1,16 +1,14 @@
 package com.xin.picturebackend.controller;
 
 import cn.hutool.json.JSONUtil;
-import com.xin.picturebackend.manager.UserConnectionManager;
-import com.xin.picturebackend.manager.connections.ConnectionType;
-import com.xin.picturebackend.messagepush.model.MessageInfo;
-import com.xin.picturebackend.messagepush.model.MessageType;
+import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
+import com.xin.picturebackend.service.msgpush.connections.ConnectionType;
+import com.xin.picturebackend.service.msgpush.model.MessageInfo;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.service.ReviewMessageService;
 import com.xin.picturebackend.service.UserService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 

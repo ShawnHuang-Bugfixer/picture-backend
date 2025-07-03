@@ -1,10 +1,10 @@
-package com.xin.picturebackend.messagepush.messageconsumer;
+package com.xin.picturebackend.service.msgpush.messageconsumer;
 
 import cn.hutool.json.JSONUtil;
 import com.rabbitmq.client.Channel;
 import com.xin.picturebackend.config.rabbitmq.MQConstants;
-import com.xin.picturebackend.manager.UserConnectionManager;
-import com.xin.picturebackend.manager.connections.ConnectionType;
+import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
+import com.xin.picturebackend.service.msgpush.connections.ConnectionType;
 import com.xin.picturebackend.model.entity.ReviewMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;

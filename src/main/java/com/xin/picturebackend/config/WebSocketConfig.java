@@ -1,9 +1,9 @@
 package com.xin.picturebackend.config;
 
 import com.xin.picturebackend.manager.websocket.handler.PictureEditHandler;
-import com.xin.picturebackend.manager.websocket.handler.WebSocketHandler;
+import com.xin.picturebackend.manager.websocket.handler.MessagePushHandler;
 import com.xin.picturebackend.manager.websocket.interceptor.MessageHandshakeInterceptor;
-import com.xin.picturebackend.manager.websocket.interceptor.WsHandshakeInterceptor;
+import com.xin.picturebackend.manager.websocket.interceptor.PictureHandshakeInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -24,22 +24,22 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private PictureEditHandler pictureEditHandler;
 
     @Resource
-    private WsHandshakeInterceptor wsHandshakeInterceptor;
+    private PictureHandshakeInterceptor pictureHandshakeInterceptor;
 
     @Resource
     private MessageHandshakeInterceptor customHandshakeInterceptor;
 
     @Resource
-    private WebSocketHandler webSocketHandler;
+    private MessagePushHandler messagePushHandler;
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         // 图片协同编辑
         registry.addHandler(pictureEditHandler, "/ws/picture/edit")
-                .addInterceptors(wsHandshakeInterceptor)
+                .addInterceptors(pictureHandshakeInterceptor)
                 .setAllowedOrigins("*");
 
         // 消息推送
-        registry.addHandler(webSocketHandler, "/ws/messagepush/connect")
+        registry.addHandler(messagePushHandler, "/ws/messagepush/connect")
                 .addInterceptors(customHandshakeInterceptor)
                 .setAllowedOrigins("*");
     }

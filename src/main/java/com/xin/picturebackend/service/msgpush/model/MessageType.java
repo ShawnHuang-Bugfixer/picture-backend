@@ -1,4 +1,4 @@
-package com.xin.picturebackend.messagepush.model;
+package com.xin.picturebackend.service.msgpush.model;
 
 public enum MessageType {
     REVIEW("review");

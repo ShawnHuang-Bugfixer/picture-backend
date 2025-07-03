@@ -1,4 +1,4 @@
-package com.xin.picturebackend.manager.connections;
+package com.xin.picturebackend.service.msgpush.connections;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

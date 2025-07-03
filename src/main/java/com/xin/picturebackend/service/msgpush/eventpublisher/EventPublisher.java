@@ -1,9 +1,9 @@
-package com.xin.picturebackend.messagepush.eventpublisher;
+package com.xin.picturebackend.service.msgpush.eventpublisher;
 
 import com.xin.picturebackend.config.rabbitmq.MQConstants;
-import com.xin.picturebackend.messagepush.model.IMessage;
-import com.xin.picturebackend.messagepush.model.MessageEvent;
-import com.xin.picturebackend.messagepush.model.MessageType;
+import com.xin.picturebackend.service.msgpush.model.IMessage;
+import com.xin.picturebackend.service.msgpush.model.MessageEvent;
+import com.xin.picturebackend.service.msgpush.model.MessageType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Value;

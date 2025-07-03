@@ -1,9 +1,9 @@
 package com.xin.picturebackend.manager.websocket.handler;
 
 import cn.hutool.json.JSONUtil;
-import com.xin.picturebackend.manager.UserConnectionManager;
-import com.xin.picturebackend.manager.connections.ConnectionType;
-import com.xin.picturebackend.messagepush.model.MessageInfo;
+import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
+import com.xin.picturebackend.service.msgpush.connections.ConnectionType;
+import com.xin.picturebackend.service.msgpush.model.MessageInfo;
 import com.xin.picturebackend.service.ReviewMessageService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -19,7 +19,7 @@ import javax.annotation.Resource;
  * @since 2025/6/26 15:35
  */
 @Component
-public class WebSocketHandler extends TextWebSocketHandler {
+public class MessagePushHandler extends TextWebSocketHandler {
 
     @Resource
     private ReviewMessageService reviewMessageService;
