@@ -149,30 +149,28 @@ CREATE TABLE review_message
     INDEX idx_user_id (user_id)
 ) COMMENT ='审核消息表';
 
-# -- 活动消息表
-# CREATE TABLE event_message
-# (
-#     id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '活动消息模板 ID',
-#     title      VARCHAR(100) NOT NULL COMMENT '消息标题',
-#     content    TEXT         NOT NULL COMMENT '消息内容',
-#     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-#     expire_at  DATETIME DEFAULT NULL COMMENT '过期时间（可选）'
-# ) COMMENT ='活动消息模板表';
-#
-# -- 关联表
-# CREATE TABLE user_event_message
-# (
-#     id               BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
-#     user_id          BIGINT NOT NULL COMMENT '接收用户 ID',
-#     event_message_id BIGINT NOT NULL COMMENT '活动消息模板 ID',
-#     status           TINYINT  DEFAULT 0 COMMENT '消息状态：0=未读，1=已读',
-#     read_at          DATETIME DEFAULT NULL COMMENT '阅读时间',
-#
-#     UNIQUE KEY uniq_user_event (user_id, event_message_id),
-#     INDEX idx_event_id (event_message_id)
-# ) COMMENT ='用户接收的活动消息关联表';
+# 为审核机制增加配额表，用户一周内申诉次数。
+CREATE TABLE `user_appeal_quota`
+(
+    `id`              BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`         BIGINT   NOT NULL COMMENT '用户ID',
+    `week_start_date` DATE     NOT NULL COMMENT '当前记录的起始周日期(如周一)',
+    `appeal_used`     INT      NOT NULL DEFAULT 0 COMMENT '已使用的申诉次数(最大为2)',
+    `updated_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `created_time`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_week` (`user_id`, `week_start_date`),
+    CONSTRAINT `chk_appeal_used` CHECK (`appeal_used` BETWEEN 0 AND 2)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='用户申诉配额表';
 
-drop table if exists event_message;
-drop table if exists user_event_message;
+# 为审核机制增加黑名单和警告次数字段。
+ALTER TABLE user
+    ADD warning_quota INT DEFAULT 3 COMMENT '剩余警告次数（默认为3，减到0即拉黑）',
+    ADD is_blacklisted BOOLEAN DEFAULT FALSE COMMENT '是否已被拉黑';
+
+ALTER TABLE picture
+    MODIFY COLUMN reviewStatus INT DEFAULT 0 COMMENT '审核状态（参见 PictureReviewStatusEnum）';
+
 
 

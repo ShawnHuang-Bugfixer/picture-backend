@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xin.picturebackend.mapper.UserAppealQuotaMapper">
+
+    <resultMap id="BaseResultMap" type="com.xin.picturebackend.model.entity.UserAppealQuota">
+            <id property="id" column="id" />
+            <result property="user_id" column="user_id" />
+            <result property="week_start_date" column="week_start_date" />
+            <result property="appeal_used" column="appeal_used" />
+            <result property="updated_time" column="updated_time" />
+            <result property="created_time" column="created_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,user_id,week_start_date,appeal_used,updated_time,created_time
+    </sql>
+</mapper>

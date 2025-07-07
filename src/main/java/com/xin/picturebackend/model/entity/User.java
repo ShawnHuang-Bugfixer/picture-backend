@@ -1,9 +1,7 @@
 package com.xin.picturebackend.model.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+
 import java.util.Date;
 import lombok.Data;
 
@@ -70,4 +68,16 @@ public class User {
      */
     @TableLogic
     private Integer isDelete;
+
+    /**
+     * 剩余警告次数（默认为3，减到0即拉黑）
+     */
+    @TableField("warning_quota")
+    private Integer warningQuota;
+
+    /**
+     * 是否已被拉黑
+     */
+    @TableField("is_blacklisted")
+    private Integer isBlacklisted;
 }

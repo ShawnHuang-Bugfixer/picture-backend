@@ -8,7 +8,6 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * fixme @EqualsAndHashCode(callSuper = true) 何用?
  *
  * @author 黄兴鑫
  * @since 2025/3/20 11:32

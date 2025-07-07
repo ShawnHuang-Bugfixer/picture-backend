@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 定义编辑图片的 WebSocket 处理器，处理连接、断开连接、接收消息等事件。
- * fixme
  *      1. 服务端接收消息请求后直接将处理，并未持久化存储，而是直接广播给所有用户。导致新加入的用户无法看到其他用户编辑后的图片。
  *      2. 用户建立 websocket 后假如直接 logout，此时 websocket 连接未断开。
  *      3. 并未实现真正的协作功能，而是通过业务设计仅仅允许一个用户处于编辑状态。

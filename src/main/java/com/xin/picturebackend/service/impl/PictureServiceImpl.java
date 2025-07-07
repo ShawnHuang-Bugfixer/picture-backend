@@ -11,7 +11,6 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.qcloud.cos.exception.CosClientException;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
@@ -36,11 +35,8 @@ import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.model.vo.UserVO;
-import com.xin.picturebackend.service.ImagesearchhistoryService;
-import com.xin.picturebackend.service.PictureService;
+import com.xin.picturebackend.service.*;
 import com.xin.picturebackend.mapper.PictureMapper;
-import com.xin.picturebackend.service.SpaceService;
-import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.utils.ColorSimilarUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -51,7 +47,6 @@ import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -127,6 +122,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Value("${cos.client.host}")
     private String cosClientHost;
+
+    @Resource
+    private UserAppealQuotaService userAppealQuotaService;
 
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
@@ -351,14 +349,19 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
+
     @Override
     public void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser) {
         // 1. 参数校验
         Long id = pictureReviewRequest.getId();
         Integer reviewStatus = pictureReviewRequest.getReviewStatus();
+        /*
+        todo 重做审核逻辑
         ThrowUtils.throwIf(id == null || reviewStatus == null
                         || PictureReviewStatusEnum.REVIEWING.equals(PictureReviewStatusEnum.getEnumByValue(reviewStatus))
                 , ErrorCode.PARAMS_ERROR, "审核状态不能为空");
+
+         */
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
         // 2. 数据库校验
         Picture picture = this.getById(id);
@@ -379,13 +382,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     public void fillPicture(Picture picture, User loginUser) {
         if (userService.isAdmin(loginUser)) {
             // 管理员自动过审
-            picture.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+            picture.setReviewStatus(PictureReviewStatusEnum.FINAL_APPROVED.getValue());
             picture.setReviewerId(loginUser.getId());
             picture.setReviewMessage("管理员自动过审");
             picture.setReviewTime(new Date());
         } else {
             // 非管理员，创建或编辑都要改为待审核
-            picture.setReviewStatus(PictureReviewStatusEnum.REVIEWING.getValue());
+            picture.setReviewStatus(PictureReviewStatusEnum.PENDING_REVIEW.getValue());
         }
     }
 
@@ -617,7 +620,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 公共图库
         if (spaceId == null) {
             // 普通用户只能查看已经通过审核的图片
-            pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+            pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.FINAL_APPROVED.getValue());
             pictureQueryRequest.setNullSpaceId(true);
         } else {
             // 私有空间
@@ -942,6 +945,26 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         } catch (Exception e) {
         }
         return avatarUrl;
+    }
+
+    @Override
+    public void markPictureWithStatus(Long picId, int status, Long reviewerId, String reviewMessage) {
+        lambdaUpdate().eq(Picture::getId, picId)
+                .set(Picture::getReviewStatus, status)
+                .set(Picture::getReviewMessage, reviewMessage)
+                .set(reviewerId != null, Picture::getReviewerId, reviewerId)
+                .update();
+    }
+
+    @Override
+    public synchronized void warnUser(Long userId) {
+        User user = userService.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.OPERATION_ERROR, "用户不存在！");
+        if (user.getIsBlacklisted() == 1) return;
+        Integer oldQuota = user.getWarningQuota();
+        if (--oldQuota <= 0) user.setIsBlacklisted(1);
+        user.setWarningQuota(oldQuota);
+        userService.updateById(user);
     }
 }
 

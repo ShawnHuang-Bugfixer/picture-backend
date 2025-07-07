@@ -64,4 +64,12 @@ public class ReviewMessage implements IMessage {
     public Date getTimestamp() {
         return createdAt;
     }
+
+    public static ReviewMessage createReviewMessage(Long userId, String content, Date createdAt) {
+        ReviewMessage reviewMessage = new ReviewMessage();
+        reviewMessage.setContent(content);
+        reviewMessage.setUserId(userId);
+        reviewMessage.setCreatedAt(createdAt);
+        return reviewMessage;
+    }
 }

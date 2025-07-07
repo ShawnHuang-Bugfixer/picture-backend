@@ -1,24 +1,18 @@
 package com.xin.picturebackend.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaMode;
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.xin.picturebackend.annotation.AuthCheck;
 import com.xin.picturebackend.annotation.OnceTokenRequired;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.xin.picturebackend.apiintegration.aliyunai.model.GetOutPaintingTaskResponse;
 import com.xin.picturebackend.apiintegration.imagesearch.ImageSearchApiFacade;
 import com.xin.picturebackend.apiintegration.imagesearch.model.ImageSearchResult;
-import com.xin.picturebackend.auth.AuthManager;
 import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.DeleteRequest;
 import com.xin.picturebackend.common.ResultUtils;
-import com.xin.picturebackend.constant.UserConstant;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -26,20 +20,15 @@ import com.xin.picturebackend.model.dto.PictureTagCategory;
 import com.xin.picturebackend.model.dto.picture.*;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.User;
-import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.UserService;
-import org.springframework.beans.BeanUtils;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -85,7 +74,6 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
 
-    // fixme 批量上传图片，需要优化，同步上传，效率低。可采用异步上传，在 redis 中记录 userId 和 taskId 进行关联，异步上传图片。
     @PostMapping("/upload/batch")
     @SaCheckPermission(PermissionConstants.ADMIN_BATCH_UPLOAD_IMAGE)
     public BaseResponse<Integer> uploadPictureByBatch(
