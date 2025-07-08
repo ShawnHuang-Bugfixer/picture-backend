@@ -33,7 +33,7 @@ spring:
   # 开放更大的文件上传体积
   servlet:
     multipart:
-      max-file-size: 10MB
+      max-file-size: 4MB
   redis:
     host: 192.168.200.100
     port: 6379

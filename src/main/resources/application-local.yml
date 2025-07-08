@@ -1,7 +1,7 @@
 # 对象存储配置（需要从腾讯云获取）
 cos:
   client:
-    host: https://huang-picture-1345225028.cos.ap-chengdu.myqcloud.com
+    host: http://resourses.collabimage.afishingcat.xin
     secretId: REDACTED_SECRET_ID
     secretKey: REDACTED_SECRET_KEY
     region: ap-chengdu

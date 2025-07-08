@@ -66,6 +66,9 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.xin.picturebackend.utils.COSKeyUtils.cosKeyHandler;
+import static com.xin.picturebackend.utils.COSKeyUtils.cosOriginKeyHandler;
+
 /**
  * @author Lenovo
  * @description 针对表【picture(图片)】的数据库操作Service实现
@@ -387,7 +390,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setReviewMessage("管理员自动过审");
             picture.setReviewTime(new Date());
         } else {
-            // 非管理员，创建或编辑都要改为待审核
+            // todo 非管理员，重做审核逻辑，利用消息队列解耦上传和第三方 api 同步审核。
             picture.setReviewStatus(PictureReviewStatusEnum.PENDING_REVIEW.getValue());
         }
     }
@@ -668,8 +671,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (count > 1) {
             return;
         }
-        String webpKey = cosKeyHandler(picture.getUrl());
-        String thumbnailKey = cosKeyHandler(picture.getThumbnailUrl());
+        String webpKey = cosKeyHandler(picture.getUrl(), cosClientHost);
+        String thumbnailKey = cosKeyHandler(picture.getThumbnailUrl(), cosClientHost);
         String originKey = cosOriginKeyHandler(webpKey, thumbnailKey);
         cosManager.deleteObject(webpKey);
         cosManager.deleteObject(originKey);
@@ -811,19 +814,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    private static String cosOriginKeyHandler(String webpKey, String thumbnailKey) {
-        int i = thumbnailKey.indexOf(".");
-        String fileExtension = thumbnailKey.substring(i);
-        String keyPrefix = webpKey.substring(0, webpKey.length() - 5);
-        return keyPrefix + fileExtension;
-    }
-
-    private String cosKeyHandler(String url) {
-        ThrowUtils.throwIf(!url.contains(cosClientHost), ErrorCode.PARAMS_ERROR, "cosKey 处理错误，url 错误");
-        int i = url.indexOf(cosClientHost);
-        return url.substring(i + cosClientHost.length());
-    }
-
     /**
      * 查询批量拉取历史表，返回指定关键词滑动分页的起始页码。
      *
@@ -936,7 +926,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         userService.updateById(user);
         // 删除 COS 中头像
         try {
-            String webpKey = cosKeyHandler(oldAvatarUrl); // /public/1894627889584680961/2025-03-30_Sgs8ncAK9jWzgFpc.webp
+            String webpKey = cosKeyHandler(oldAvatarUrl, cosClientHost); // /public/1894627889584680961/2025-03-30_Sgs8ncAK9jWzgFpc.webp
             String thumbnailKey = webpKey.replace(".webp", "_thumbnail.png");
             String originKey = cosOriginKeyHandler(webpKey, thumbnailKey);
             cosManager.deleteObject(webpKey);
