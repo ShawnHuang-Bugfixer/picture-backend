@@ -131,6 +131,7 @@ public class PictureController {
 
     /**
      * 分页获取图片列表（仅管理员可用）
+     * todo 使用该接口整合人工复审，人工申诉审核（ai suspicious、appeal pending）
      */
     @PostMapping("/list/page")
     @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)

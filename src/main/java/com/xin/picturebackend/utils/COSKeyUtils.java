@@ -4,7 +4,8 @@ import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 
 /**
- * TODO
+ * 从 url 中提取 COS OBJKey 的工具类。
+ *
  * @author 黄兴鑫
  * @since 2025/7/8 14:43
  */

@@ -62,6 +62,16 @@ public class CommonActions {
         };
     }
 
+    public Action<ImageReviewState, ImageReviewEvent> aiSuspiciousAction() {
+        return context -> {
+            // 1. 标记图片AI怀疑 pending review -> ai suspicious
+            Picture picture = (Picture)context.getExtendedState().getVariables().get(ContextKey.PICTURE_OBJ_KEY);
+            if (picture == null) return;
+            log.debug("enter ai suspicious");
+            pictureService.markPictureWithStatus(picture.getId(), PictureReviewStatusEnum.AI_SUSPICIOUS.getValue(), null,"AI Suspicious");
+        };
+    }
+
     public Action<ImageReviewState, ImageReviewEvent> manualPassAction() {
         return context -> {
             // 1.人工复审通过 pending review -> ai suspicious -> manual pass

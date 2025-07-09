@@ -1,4 +1,4 @@
-package com.xin.picturebackend.service.msgpush.model;
+package com.xin.picturebackend.model.messagequeue.messagepush;
 
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;

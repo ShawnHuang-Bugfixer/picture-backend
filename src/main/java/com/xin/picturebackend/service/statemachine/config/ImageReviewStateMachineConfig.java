@@ -43,7 +43,7 @@ public class ImageReviewStateMachineConfig extends EnumStateMachineConfigurerAda
                 .event(ImageReviewEvent.AI_REVIEW_REJECT).action(actions.aiRejectAction()).and()
 
                 .withExternal().source(ImageReviewState.PENDING_REVIEW).target(ImageReviewState.AI_SUSPICIOUS)
-                .event(ImageReviewEvent.AI_REVIEW_SUSPICIOUS).and()
+                .event(ImageReviewEvent.AI_REVIEW_SUSPICIOUS).action(actions.aiSuspiciousAction()).and()
 
                 // 人工复审阶段
                 .withExternal().source(ImageReviewState.AI_SUSPICIOUS).target(ImageReviewState.MANUAL_PASS)

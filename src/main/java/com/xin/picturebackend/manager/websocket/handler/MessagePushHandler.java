@@ -3,7 +3,7 @@ package com.xin.picturebackend.manager.websocket.handler;
 import cn.hutool.json.JSONUtil;
 import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
 import com.xin.picturebackend.service.msgpush.connections.ConnectionType;
-import com.xin.picturebackend.service.msgpush.model.MessageInfo;
+import com.xin.picturebackend.model.messagequeue.messagepush.MessageInfo;
 import com.xin.picturebackend.service.ReviewMessageService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;

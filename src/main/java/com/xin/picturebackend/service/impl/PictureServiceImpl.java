@@ -18,6 +18,7 @@ import com.xin.picturebackend.apiintegration.com.pixabay.api.SearchPicturesAPI;
 import com.xin.picturebackend.auth.AuthManager;
 import com.xin.picturebackend.auth.constant.PermissionConstants;
 import com.xin.picturebackend.common.DeleteRequest;
+import com.xin.picturebackend.config.rabbitmq.MQConstants;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
@@ -33,11 +34,16 @@ import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.enums.SpaceTypeEnum;
+import com.xin.picturebackend.model.messagequeue.review.ReviewContentMessage;
 import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.model.vo.UserVO;
 import com.xin.picturebackend.service.*;
 import com.xin.picturebackend.mapper.PictureMapper;
+import com.xin.picturebackend.service.statemachine.context.ContextKey;
+import com.xin.picturebackend.service.statemachine.events.ImageReviewEvent;
+import com.xin.picturebackend.service.statemachine.states.ImageReviewState;
 import com.xin.picturebackend.utils.ColorSimilarUtils;
+import com.xin.picturebackend.utils.StateMachineUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -46,14 +52,18 @@ import org.jsoup.select.Elements;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.config.StateMachineFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -127,7 +137,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private String cosClientHost;
 
     @Resource
-    private UserAppealQuotaService userAppealQuotaService;
+    private AmqpTemplate amqpTemplate;
+
+    @Resource
+    @Lazy
+    private StateMachineFactory<ImageReviewState, ImageReviewEvent> stateMachineFactory;
 
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
@@ -225,6 +239,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
             return true;
         });
+        // 更新完毕后，重新读取一次 picture 对象
+        Picture fullPicture = this.getById(picture.getId());
+        // 普通用户上传到公共空间且图片未过审才需要审核
+        if (!userService.isAdmin(user) && spaceId == null && fullPicture.getReviewStatus() != PictureReviewStatusEnum.FINAL_APPROVED.getValue())
+            sentReviewContentToMessageQueue(picture);
         // 6.1 添加到布隆过滤器
         if (executeResult != null && executeResult) {
             pictureBloomFilter.add(picture.getId().toString());
@@ -358,29 +377,58 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 1. 参数校验
         Long id = pictureReviewRequest.getId();
         Integer reviewStatus = pictureReviewRequest.getReviewStatus();
-        /*
-        todo 重做审核逻辑
         ThrowUtils.throwIf(id == null || reviewStatus == null
-                        || PictureReviewStatusEnum.REVIEWING.equals(PictureReviewStatusEnum.getEnumByValue(reviewStatus))
-                , ErrorCode.PARAMS_ERROR, "审核状态不能为空");
-
-         */
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
+                , ErrorCode.PARAMS_ERROR, "审核参数错误！");
         // 2. 数据库校验
         Picture picture = this.getById(id);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-        // 3. 审核状态校验
-        ThrowUtils.throwIf(picture.getReviewStatus().equals(reviewStatus), ErrorCode.PARAMS_ERROR, "请勿重复校验");
-        // 4. 更新审核状态
-        Picture newPicture = new Picture();
-        BeanUtils.copyProperties(pictureReviewRequest, newPicture);
-        newPicture.setReviewerId(loginUser.getId());
-        newPicture.setReviewStatus(reviewStatus);
-        newPicture.setEditTime(new Date());
-        boolean result = this.updateById(newPicture);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "审核失败");
+        // 3. 管理员直接修改图片状态，跳过状态机
+        if (picture.getReviewStatus() != PictureReviewStatusEnum.AI_SUSPICIOUS.getValue()
+                && picture.getReviewStatus() != PictureReviewStatusEnum.APPEAL_PENDING.getValue()) {
+            Picture newPicture = new Picture();
+            BeanUtils.copyProperties(pictureReviewRequest, newPicture);
+            newPicture.setReviewerId(loginUser.getId());
+            newPicture.setReviewStatus(reviewStatus);
+            newPicture.setEditTime(new Date());
+            boolean result = this.updateById(newPicture);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "审核失败");
+        } else {
+            // 3. 利用状态机自动处理图片审核状态流转。
+            StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.AI_SUSPICIOUS);
+            stateMachine.start();
+            StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
+            StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.REVIEWER_ID_KEY, loginUser.getId());
+            Integer oldStatus = picture.getReviewStatus();
+            if (oldStatus == PictureReviewStatusEnum.AI_SUSPICIOUS.getValue()) {
+                switch (reviewStatus) {
+                    case 6 -> {
+                        // 3.1 ai suspicious -> manual pass
+                        stateMachine.sendEvent(ImageReviewEvent.MANUAL_REVIEW_PASS);
+                    }
+                    case 7 -> {
+                        // 3.2 ai suspicious -> manual reject
+                        stateMachine.sendEvent(ImageReviewEvent.MANUAL_REVIEW_REJECT);
+                    }
+                }
+            } else if (oldStatus == PictureReviewStatusEnum.APPEAL_PENDING.getValue()) {
+                switch (reviewStatus) {
+                    case 6 -> {
+                        // 3.4 appeal pending -> appeal pass
+                        stateMachine.sendEvent(ImageReviewEvent.APPEAL_PASS);
+                    }
+                    case 7 -> {
+                        // 3.5 appeal pending -> appeal reject
+                        stateMachine.sendEvent(ImageReviewEvent.APPEAL_REJECT);
+                    }
+                }
+            }
+            stateMachine.stop();
+        }
     }
 
+    /**
+     * 根据不同用户设置不同的审核状态，管理员上传的图片默认过审。
+     */
     @Override
     public void fillPicture(Picture picture, User loginUser) {
         if (userService.isAdmin(loginUser)) {
@@ -390,8 +438,16 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setReviewMessage("管理员自动过审");
             picture.setReviewTime(new Date());
         } else {
-            // todo 非管理员，重做审核逻辑，利用消息队列解耦上传和第三方 api 同步审核。
-            picture.setReviewStatus(PictureReviewStatusEnum.PENDING_REVIEW.getValue());
+            if (picture.getId() == null) {
+                // 首次上传图片，设置为待审核
+                picture.setReviewStatus(PictureReviewStatusEnum.PENDING_REVIEW.getValue());
+                picture.setReviewTime(new Date());
+            } else {
+                // fixme 更新或者编辑图片，对图片的描述文字进行更新，暂时不做处理，以后优化。
+//                picture.setReviewStatus(PictureReviewStatusEnum.AI_SUSPICIOUS.getValue());
+//                picture.setReviewMessage("对图片进行了编辑或更新，进入人工审核通道");
+//                picture.setReviewTime(new Date());
+            }
         }
     }
 
@@ -955,6 +1011,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (--oldQuota <= 0) user.setIsBlacklisted(1);
         user.setWarningQuota(oldQuota);
         userService.updateById(user);
+    }
+
+    private void sentReviewContentToMessageQueue(Picture picture) {
+        ReviewContentMessage reviewContentMessage = new ReviewContentMessage();
+        reviewContentMessage.setPicId(picture.getId());
+        amqpTemplate.convertAndSend(MQConstants.AUDIT_CONTENT_EXCHANGE, MQConstants.ROUTING_AUDIT_CONTENT, reviewContentMessage);
     }
 }
 

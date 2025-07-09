@@ -8,10 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.config.StateMachineFactory;
-import org.springframework.statemachine.support.DefaultStateMachineContext;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
+
+import static com.xin.picturebackend.utils.StateMachineUtils.getStateMachine;
 
 /**
  * 测试图片审核状态机基本使用
@@ -26,7 +27,7 @@ public class StateMachineTest {
 
     @Test
     void testAIPassProcess() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.PENDING_REVIEW);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.PENDING_REVIEW);
         stateMachine.start();
         System.out.println(stateMachine.getState().getId());
         System.out.println(stateMachine.getState().getId());
@@ -43,7 +44,7 @@ public class StateMachineTest {
         ArrayList<Thread> threads = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             Thread thread = new Thread(() -> {
-                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.PENDING_REVIEW);
+                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.PENDING_REVIEW);
                 stateMachine.start();
                 System.out.println(stateMachine.getState().getId());
                 Picture picture = new Picture();
@@ -66,8 +67,22 @@ public class StateMachineTest {
     }
 
     @Test
+    void testAISuspicious() {
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.PENDING_REVIEW);
+        stateMachine.start();
+        System.out.println(stateMachine.getState().getId());
+        Picture picture = new Picture();
+        picture.setId(1906366833817010177L);
+        picture.setUserId(1894627889584680961L);
+        stateMachine.getExtendedState().getVariables().put(ContextKey.PICTURE_OBJ_KEY, picture);
+        stateMachine.sendEvent(ImageReviewEvent.AI_REVIEW_SUSPICIOUS);
+        System.out.println(stateMachine.getState().getId());
+        stateMachine.stop();
+    }
+
+    @Test
     void testManualReviewPass() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.PENDING_REVIEW);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.PENDING_REVIEW);
         stateMachine.start();
         System.out.println(stateMachine.getState().getId());
         stateMachine.sendEvent(ImageReviewEvent.AI_REVIEW_SUSPICIOUS);
@@ -87,7 +102,7 @@ public class StateMachineTest {
         ArrayList<Thread> threads = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             Thread thread = new Thread(() -> {
-                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.PENDING_REVIEW);
+                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.PENDING_REVIEW);
                 stateMachine.start();
                 System.out.println(stateMachine.getState().getId());
                 stateMachine.sendEvent(ImageReviewEvent.AI_REVIEW_SUSPICIOUS);
@@ -112,7 +127,7 @@ public class StateMachineTest {
 
     @Test
     void testAppealPass() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.FINAL_REJECTED);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
         stateMachine.start();
         System.out.println(stateMachine.getState().getId());
         stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
@@ -129,7 +144,7 @@ public class StateMachineTest {
 
     @Test
     void testAppealReject() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(ImageReviewState.FINAL_REJECTED);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
         stateMachine.start();
         System.out.println(stateMachine.getState().getId());
         stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
@@ -143,16 +158,5 @@ public class StateMachineTest {
         System.out.println(stateMachine.getState().getId());
         stateMachine.stop();
     }
-    private StateMachine<ImageReviewState, ImageReviewEvent> getStateMachine(ImageReviewState imageReviewState) {
-        // 获取状态机工厂并创建状态机实例
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = stateMachineFactory.getStateMachine();
 
-        // 设置初始状态
-        stateMachine.getStateMachineAccessor().doWithAllRegions(access -> {
-            access.resetStateMachine(new DefaultStateMachineContext<>(imageReviewState, // 你想要设置的初始状态
-                    null, null, null, null, stateMachine.getId()));
-        });
-
-        return stateMachine;
-    }
 }

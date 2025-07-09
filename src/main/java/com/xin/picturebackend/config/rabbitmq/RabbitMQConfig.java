@@ -55,5 +55,48 @@ public class RabbitMQConfig {
                 .to(dlxExchange())
                 .with(MQConstants.DLQ_AUDIT);
     }
+
+    // 审核内容交换机
+    @Bean
+    public DirectExchange auditContentExchange() {
+        return new DirectExchange(MQConstants.AUDIT_CONTENT_EXCHANGE);
+    }
+
+    // 审核内容死信交换机
+    @Bean
+    public DirectExchange dlxAuditContentExchange() {
+        return new DirectExchange(MQConstants.DLX_AUDIT_CONTENT_EXCHANGE);
+    }
+
+    // 审核内容主队列
+    @Bean
+    public Queue auditContentQueue() {
+        return QueueBuilder.durable(MQConstants.AUDIT_CONTENT_QUEUE)
+                .withArgument("x-dead-letter-exchange", MQConstants.DLX_AUDIT_CONTENT_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", MQConstants.DLQ_AUDIT_CONTENT)
+                .build();
+    }
+
+    // 审核内容死信队列
+    @Bean
+    public Queue dlqAuditContentQueue() {
+        return QueueBuilder.durable(MQConstants.DLQ_AUDIT_CONTENT).build();
+    }
+
+    // 主队列绑定
+    @Bean
+    public Binding auditContentBinding() {
+        return BindingBuilder.bind(auditContentQueue())
+                .to(auditContentExchange())
+                .with(MQConstants.ROUTING_AUDIT_CONTENT);
+    }
+
+    // 死信队列绑定
+    @Bean
+    public Binding dlqAuditContentBinding() {
+        return BindingBuilder.bind(dlqAuditContentQueue())
+                .to(dlxAuditContentExchange())
+                .with(MQConstants.DLQ_AUDIT_CONTENT);
+    }
 }
 

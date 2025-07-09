@@ -3,7 +3,7 @@ package com.xin.picturebackend.controller;
 import cn.hutool.json.JSONUtil;
 import com.xin.picturebackend.service.msgpush.connections.UserConnectionManager;
 import com.xin.picturebackend.service.msgpush.connections.ConnectionType;
-import com.xin.picturebackend.service.msgpush.model.MessageInfo;
+import com.xin.picturebackend.model.messagequeue.messagepush.MessageInfo;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.service.ReviewMessageService;
 import com.xin.picturebackend.service.UserService;
