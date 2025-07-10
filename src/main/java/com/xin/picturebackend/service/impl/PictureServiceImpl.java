@@ -376,15 +376,16 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     public void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser) {
         // 1. 参数校验
         Long id = pictureReviewRequest.getId();
-        Integer reviewStatus = pictureReviewRequest.getReviewStatus();
+        Integer reviewStatus = pictureReviewRequest.getReviewStatus(); // 前端传递，只有 6 -> finalize pass 和 7 -> finalize reject 两种。
         ThrowUtils.throwIf(id == null || reviewStatus == null
                 , ErrorCode.PARAMS_ERROR, "审核参数错误！");
         // 2. 数据库校验
         Picture picture = this.getById(id);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-        // 3. 管理员直接修改图片状态，跳过状态机
+        // 3. 管理员跳过状态机图片状态流转，直接修改图片状态。（比如：把已通过的改为未通过）
         if (picture.getReviewStatus() != PictureReviewStatusEnum.AI_SUSPICIOUS.getValue()
                 && picture.getReviewStatus() != PictureReviewStatusEnum.APPEAL_PENDING.getValue()) {
+            // 图片持久化状态状态不为 ai suspicious / appeal pending
             Picture newPicture = new Picture();
             BeanUtils.copyProperties(pictureReviewRequest, newPicture);
             newPicture.setReviewerId(loginUser.getId());
@@ -394,12 +395,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "审核失败");
         } else {
             // 3. 利用状态机自动处理图片审核状态流转。
-            StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.AI_SUSPICIOUS);
-            stateMachine.start();
-            StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
-            StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.REVIEWER_ID_KEY, loginUser.getId());
             Integer oldStatus = picture.getReviewStatus();
             if (oldStatus == PictureReviewStatusEnum.AI_SUSPICIOUS.getValue()) {
+                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.AI_SUSPICIOUS);
+                stateMachine.start();
+                StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
+                StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.REVIEWER_ID_KEY, loginUser.getId());
                 switch (reviewStatus) {
                     case 6 -> {
                         // 3.1 ai suspicious -> manual pass
@@ -410,7 +411,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                         stateMachine.sendEvent(ImageReviewEvent.MANUAL_REVIEW_REJECT);
                     }
                 }
+                stateMachine.stop();
             } else if (oldStatus == PictureReviewStatusEnum.APPEAL_PENDING.getValue()) {
+                StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.APPEAL_PENDING);
+                stateMachine.start();
+                StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
+                StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.REVIEWER_ID_KEY, loginUser.getId());
                 switch (reviewStatus) {
                     case 6 -> {
                         // 3.4 appeal pending -> appeal pass
@@ -421,8 +427,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                         stateMachine.sendEvent(ImageReviewEvent.APPEAL_REJECT);
                     }
                 }
+                stateMachine.stop();
             }
-            stateMachine.stop();
         }
     }
 
@@ -659,14 +665,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                             key = "'picture:pictureVOList:' + "
                                     + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
                                     + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
-                            condition = "#a0.current >= 1 && #a0.current <= 20 && #a0.spaceId == null"  // 使用 #a0
+                            condition = "#a0.current >= 1 && #a0.current <= 20 && #a0.spaceId == null && #a2 == false"
                     ),
                     @Cacheable(cacheManager = "redisCacheManager",
                             value = "pictureColdVOList",
                             key = "'picture:pictureVOList:' + "
                                     + "T(org.springframework.util.DigestUtils).md5DigestAsHex("
                                     + "T(cn.hutool.json.JSONUtil).toJsonStr(#a0).getBytes())",
-                            condition = "#a0.current >= 21 && #a0.current <= 100 &&a0.spaceId == null"
+                            condition = "#a0.current >= 21 && #a0.current <= 100 && #a0.spaceId == null && #a2 == false"
                     )
             }
     )
@@ -677,6 +683,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 公共图库
+        Integer queryPicStatus = pictureQueryRequest.getReviewStatus();
         if (spaceId == null) {
             // 普通用户只能查看已经通过审核的图片
             pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.FINAL_APPROVED.getValue());
@@ -693,9 +700,17 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
 
+        // 查询用户个人主页
         if (checkMy) {
+            User loginUser = userService.getLoginUser(request);
+            Long userId = pictureQueryRequest.getUserId();
+            ThrowUtils.throwIf(!userId.equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "非法请求他人上传的图片！");
+            // 所有上传记录
             pictureQueryRequest.setReviewStatus(null);
             pictureQueryRequest.setNullSpaceId(true);
+            // 未过审上传记录
+            if (queryPicStatus != null && queryPicStatus.equals(PictureReviewStatusEnum.FINAL_REJECTED.getValue()))
+                pictureQueryRequest.setReviewStatus(queryPicStatus);
         }
 
         // 查询数据库
@@ -1011,6 +1026,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (--oldQuota <= 0) user.setIsBlacklisted(1);
         user.setWarningQuota(oldQuota);
         userService.updateById(user);
+    }
+
+    @Override
+    public boolean appealRejectedPicture(Picture picture, User loginUser) {
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.APPEAL_PENDING);
+        StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
+        stateMachine.start();
+        return stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
     }
 
     private void sentReviewContentToMessageQueue(Picture picture) {

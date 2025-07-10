@@ -88,4 +88,6 @@ public interface PictureService extends IService<Picture> {
     void markPictureWithStatus(Long picId, int status, Long reviewerId, String reviewMessage);
 
     void warnUser(Long userId);
+
+    boolean appealRejectedPicture(Picture picture, User loginUser);
 }

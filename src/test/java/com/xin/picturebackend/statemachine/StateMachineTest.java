@@ -4,6 +4,7 @@ import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.service.statemachine.context.ContextKey;
 import com.xin.picturebackend.service.statemachine.events.ImageReviewEvent;
 import com.xin.picturebackend.service.statemachine.states.ImageReviewState;
+import com.xin.picturebackend.utils.StateMachineUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.statemachine.StateMachine;
@@ -127,13 +128,10 @@ public class StateMachineTest {
 
     @Test
     void testAppealPass() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.APPEAL_PENDING);
         stateMachine.start();
-        System.out.println(stateMachine.getState().getId());
-        stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
-        System.out.println(stateMachine.getState().getId());
         Picture picture = new Picture();
-        picture.setId(1906366833817010177L);
+        picture.setId(1943139257270898690L);
         picture.setUserId(1894627889584680961L);
         stateMachine.getExtendedState().getVariables().put(ContextKey.PICTURE_OBJ_KEY, picture);
         stateMachine.getExtendedState().getVariables().put(ContextKey.REVIEWER_ID_KEY, 13465L); // 审核人 id
@@ -144,13 +142,10 @@ public class StateMachineTest {
 
     @Test
     void testAppealReject() {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = getStateMachine(stateMachineFactory, ImageReviewState.APPEAL_PENDING);
         stateMachine.start();
-        System.out.println(stateMachine.getState().getId());
-        stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
-        System.out.println(stateMachine.getState().getId());
         Picture picture = new Picture();
-        picture.setId(1906366833817010177L);
+        picture.setId(1943139257270898690L);
         picture.setUserId(1894627889584680961L);
         stateMachine.getExtendedState().getVariables().put(ContextKey.PICTURE_OBJ_KEY, picture);
         stateMachine.getExtendedState().getVariables().put(ContextKey.REVIEWER_ID_KEY, 13465L); // 审核人 id
@@ -159,4 +154,17 @@ public class StateMachineTest {
         stateMachine.stop();
     }
 
+    @Test
+    void testAppealPending() {
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
+        System.out.println(stateMachine.getState().getId());
+        Picture picture = new Picture();
+        picture.setId(1943139257270898690L);
+        picture.setUserId(1894627889584680961L);
+        picture.setReviewStatus(7);
+        StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
+        stateMachine.start();
+        stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
+        System.out.println(stateMachine.getState().getId());
+    }
 }

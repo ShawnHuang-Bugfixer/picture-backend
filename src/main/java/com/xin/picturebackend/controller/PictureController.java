@@ -2,6 +2,7 @@ package com.xin.picturebackend.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.OnceTokenRequired;
 import com.xin.picturebackend.apiintegration.aliyunai.model.AliYunAiApi;
@@ -263,5 +264,18 @@ public class PictureController {
         User loginUser = userService.getLoginUser(request);
         String avatarUrl = pictureService.uploadUserAvatarPicture(multipartFile, loginUser);
         return ResultUtils.success(avatarUrl);
+    }
+
+    @PostMapping("/appeal")
+    public BaseResponse<Boolean> appealRejectedPicture(@RequestBody AppealRequest appealRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        Long picId = appealRequest.getPicId();
+        QueryWrapper<Picture> pictureQueryWrapper = new QueryWrapper<>();
+        pictureQueryWrapper.eq("id", picId);
+        Picture picture = pictureService.getById(picId);
+        if (picture == null) return new BaseResponse<Boolean>(ErrorCode.PARAMS_ERROR.getCode(), false, "申诉图片不存在！");
+        boolean b = pictureService.appealRejectedPicture(picture, loginUser);
+        if (!b) throw new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户每周申诉次数有限");
+        return ResultUtils.success(b);
     }
 }

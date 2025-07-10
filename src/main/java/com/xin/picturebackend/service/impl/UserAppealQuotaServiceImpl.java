@@ -44,10 +44,12 @@ public class UserAppealQuotaServiceImpl extends ServiceImpl<UserAppealQuotaMappe
 
     @Override
     public boolean canAppeal(Long userId) {
-        UserAppealQuota one = lambdaQuery().eq(UserAppealQuota::getUserId, userId)
-                .eq(UserAppealQuota::getWeekStartDate, getCurrentWeekStartDate())
-                .one();
-        return one.getAppealUsed() > 0;
+        Date weekStartDate = getCurrentWeekStartDate();
+        UserAppealQuota quota = getOrInitQuota(userId, weekStartDate);
+//        UserAppealQuota one = lambdaQuery().eq(UserAppealQuota::getUserId, userId)
+//                .eq(UserAppealQuota::getWeekStartDate, getCurrentWeekStartDate())
+//                .one();
+        return quota.getAppealUsed() > 0;
     }
 
     private UserAppealQuota getOrInitQuota(Long userId, Date weekStartDate) {

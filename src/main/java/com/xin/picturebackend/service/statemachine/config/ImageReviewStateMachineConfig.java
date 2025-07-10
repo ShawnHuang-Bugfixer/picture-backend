@@ -55,13 +55,13 @@ public class ImageReviewStateMachineConfig extends EnumStateMachineConfigurerAda
 
                 // 申诉阶段
                 .withExternal().source(ImageReviewState.FINAL_REJECTED).target(ImageReviewState.APPEAL_PENDING)
-                .event(ImageReviewEvent.APPEAL_SUBMIT).and()
+                .event(ImageReviewEvent.APPEAL_SUBMIT).action(actions.appealPendingAction()).guard(guards.AppealGuard()).and()
 
                 .withExternal().source(ImageReviewState.APPEAL_PENDING).target(ImageReviewState.APPEAL_PASS)
-                .event(ImageReviewEvent.APPEAL_PASS).action(actions.appealPassAction()).guard(guards.AppealGuard()).and()
+                .event(ImageReviewEvent.APPEAL_PASS).action(actions.appealPassAction()).and()
 
                 .withExternal().source(ImageReviewState.APPEAL_PENDING).target(ImageReviewState.APPEAL_REJECTED)
-                .event(ImageReviewEvent.APPEAL_REJECT).guard(guards.AppealGuard()).action(actions.appealRejectAction());
+                .event(ImageReviewEvent.APPEAL_REJECT).action(actions.appealRejectAction());
     }
 
     @Override
