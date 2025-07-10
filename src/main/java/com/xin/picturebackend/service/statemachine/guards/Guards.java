@@ -29,13 +29,6 @@ public class Guards {
 
             // 检查申诉额度
             if (!userAppealQuotaService.canAppeal(picture.getUserId())) {
-                status.setRollbackOnly(); // 显式回滚
-                return false;
-            }
-
-            // 检查图片状态
-            if (!(PictureReviewStatusEnum.FINAL_REJECTED.getValue() == (picture.getReviewStatus()))) {
-                status.setRollbackOnly();
                 return false;
             }
 

@@ -4,13 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.apiintegration.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.xin.picturebackend.common.DeleteRequest;
-import com.xin.picturebackend.model.dto.file.UploadPictureResult;
 import com.xin.picturebackend.model.dto.picture.*;
 import com.xin.picturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.PictureVO;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
@@ -89,5 +87,5 @@ public interface PictureService extends IService<Picture> {
 
     void warnUser(Long userId);
 
-    boolean appealRejectedPicture(Picture picture, User loginUser);
+    boolean appealPendingPicture(Picture picture, User loginUser);
 }

@@ -21,6 +21,7 @@ import com.xin.picturebackend.model.dto.PictureTagCategory;
 import com.xin.picturebackend.model.dto.picture.*;
 import com.xin.picturebackend.model.entity.Picture;
 import com.xin.picturebackend.model.entity.User;
+import com.xin.picturebackend.model.enums.PictureReviewStatusEnum;
 import com.xin.picturebackend.model.vo.PictureVO;
 import com.xin.picturebackend.service.PictureService;
 import com.xin.picturebackend.service.UserService;
@@ -267,15 +268,29 @@ public class PictureController {
     }
 
     @PostMapping("/appeal")
-    public BaseResponse<Boolean> appealRejectedPicture(@RequestBody AppealRequest appealRequest, HttpServletRequest request) {
+    public BaseResponse<Boolean> appealPendingPicture(@RequestBody AppealRequest appealRequest, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         Long picId = appealRequest.getPicId();
-        QueryWrapper<Picture> pictureQueryWrapper = new QueryWrapper<>();
-        pictureQueryWrapper.eq("id", picId);
+
         Picture picture = pictureService.getById(picId);
-        if (picture == null) return new BaseResponse<Boolean>(ErrorCode.PARAMS_ERROR.getCode(), false, "申诉图片不存在！");
-        boolean b = pictureService.appealRejectedPicture(picture, loginUser);
-        if (!b) throw new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户每周申诉次数有限");
-        return ResultUtils.success(b);
+        if (picture == null) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, "申诉图片不存在！");
+        }
+
+        if (!loginUser.getId().equals(picture.getUserId())) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, "用户非法申诉！");
+        }
+
+        if (PictureReviewStatusEnum.FINAL_REJECTED.getValue() != picture.getReviewStatus()) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, "图片状态异常！");
+        }
+
+        boolean appealed = pictureService.appealPendingPicture(picture, loginUser);
+        if (!appealed) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户每周申诉次数有限");
+        }
+
+        return ResultUtils.success(true);
     }
+
 }

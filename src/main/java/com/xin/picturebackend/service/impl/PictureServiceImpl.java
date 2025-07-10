@@ -1029,11 +1029,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     @Override
-    public boolean appealRejectedPicture(Picture picture, User loginUser) {
-        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.APPEAL_PENDING);
+    public boolean appealPendingPicture(Picture picture, User loginUser) {
+        StateMachine<ImageReviewState, ImageReviewEvent> stateMachine = StateMachineUtils.getStateMachine(stateMachineFactory, ImageReviewState.FINAL_REJECTED);
         StateMachineUtils.setStateMachineExtendedState(stateMachine, ContextKey.PICTURE_OBJ_KEY, picture);
         stateMachine.start();
-        return stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
+        boolean result = true;
+        stateMachine.sendEvent(ImageReviewEvent.APPEAL_SUBMIT);
+        if (stateMachine.getState().getId().equals(ImageReviewState.FINAL_REJECTED)) result = false; // 状态切换失败
+        return result;
     }
 
     private void sentReviewContentToMessageQueue(Picture picture) {
