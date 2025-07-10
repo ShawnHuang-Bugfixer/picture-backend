@@ -708,9 +708,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 所有上传记录
             pictureQueryRequest.setReviewStatus(null);
             pictureQueryRequest.setNullSpaceId(true);
-            // 未过审上传记录
-            if (queryPicStatus != null && queryPicStatus.equals(PictureReviewStatusEnum.FINAL_REJECTED.getValue()))
-                pictureQueryRequest.setReviewStatus(queryPicStatus);
+            if (queryPicStatus != null) {
+                // 未过审上传记录
+                if (queryPicStatus.equals(PictureReviewStatusEnum.FINAL_REJECTED.getValue()))
+                    pictureQueryRequest.setReviewStatus(queryPicStatus);
+                // 申诉中上传记录
+                if (queryPicStatus.equals(PictureReviewStatusEnum.APPEAL_PENDING.getValue()))
+                    pictureQueryRequest.setReviewStatus(queryPicStatus);
+            }
         }
 
         // 查询数据库
