@@ -49,10 +49,10 @@ create table if not exists picture
 -- 修改图片表，增加审核状态字段
 ALTER TABLE picture
     -- 添加新列
-    ADD COLUMN reviewStatus  INT DEFAULT 0 NOT NULL COMMENT '审核状态：0-待审核; 1-通过; 2-拒绝',
+    ADD COLUMN reviewStatus         INT DEFAULT 0 NOT NULL COMMENT '审核状态：0-待审核; 1-通过; 2-拒绝',
     ADD COLUMN reviewContentMessage VARCHAR(512)  NULL COMMENT '审核信息',
-    ADD COLUMN reviewerId    BIGINT        NULL COMMENT '审核人 ID',
-    ADD COLUMN reviewTime    DATETIME      NULL COMMENT '审核时间';
+    ADD COLUMN reviewerId           BIGINT        NULL COMMENT '审核人 ID',
+    ADD COLUMN reviewTime           DATETIME      NULL COMMENT '审核时间';
 
 -- 修改图片表，增加感知哈希值字段和索引
 ALTER TABLE picture
@@ -166,11 +166,25 @@ CREATE TABLE `user_appeal_quota`
 
 # 为审核机制增加黑名单和警告次数字段。
 ALTER TABLE user
-    ADD warning_quota INT DEFAULT 3 COMMENT '剩余警告次数（默认为3，减到0即拉黑）',
+    ADD warning_quota  INT     DEFAULT 3 COMMENT '剩余警告次数（默认为3，减到0即拉黑）',
     ADD is_blacklisted BOOLEAN DEFAULT FALSE COMMENT '是否已被拉黑';
 
 ALTER TABLE picture
     MODIFY COLUMN reviewStatus INT DEFAULT 0 COMMENT '审核状态（参见 PictureReviewStatusEnum）';
+
+CREATE TABLE user_email
+(
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id     BIGINT       NOT NULL UNIQUE COMMENT '所属用户ID，唯一 = 一个用户只能绑定一个邮箱',
+    email       VARCHAR(254) NOT NULL UNIQUE COMMENT '邮箱地址，唯一 = 一个邮箱只能对应一个用户',
+    is_verified BOOLEAN  DEFAULT FALSE COMMENT '是否已验证',
+    status      TINYINT  DEFAULT 0 COMMENT '状态: 0-正常, 1-冻结, 2-屏蔽',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uk_email ON user_email(email);
+CREATE INDEX idx_user_id ON user_email(user_id);
 
 
 

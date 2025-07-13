@@ -83,7 +83,7 @@ public class RabbitMQConfig {
         return QueueBuilder.durable(MQConstants.DLQ_AUDIT_CONTENT).build();
     }
 
-    // 主队列绑定
+    // 审核内容主队列绑定
     @Bean
     public Binding auditContentBinding() {
         return BindingBuilder.bind(auditContentQueue())
@@ -91,12 +91,55 @@ public class RabbitMQConfig {
                 .with(MQConstants.ROUTING_AUDIT_CONTENT);
     }
 
-    // 死信队列绑定
+    // 审核内容死信队列绑定
     @Bean
     public Binding dlqAuditContentBinding() {
         return BindingBuilder.bind(dlqAuditContentQueue())
                 .to(dlxAuditContentExchange())
                 .with(MQConstants.DLQ_AUDIT_CONTENT);
+    }
+
+    // 邮箱验证码主交换机
+    @Bean
+    public DirectExchange emailCodeExchange() {
+        return new DirectExchange(MQConstants.EMAIL_CODE_EXCHANGE);
+    }
+
+    // 邮箱验证码死信交换机
+    @Bean
+    public DirectExchange dlxEmailCodeExchange() {
+        return new DirectExchange(MQConstants.DLX_EMAIL_CODE_EXCHANGE);
+    }
+
+    // 邮箱验证码主队列（带死信配置）
+    @Bean
+    public Queue emailCodeQueue() {
+        return QueueBuilder.durable(MQConstants.EMAIL_CODE_QUEUE)
+                .withArgument("x-dead-letter-exchange", MQConstants.DLX_EMAIL_CODE_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", MQConstants.DLQ_EMAIL_CODE)
+                .build();
+    }
+
+    // 邮箱验证码死信队列
+    @Bean
+    public Queue dlqEmailCodeQueue() {
+        return QueueBuilder.durable(MQConstants.DLQ_EMAIL_CODE).build();
+    }
+
+    // 邮箱验证码主队列绑定
+    @Bean
+    public Binding emailCodeBinding() {
+        return BindingBuilder.bind(emailCodeQueue())
+                .to(emailCodeExchange())
+                .with(MQConstants.ROUTING_EMAIL_CODE);
+    }
+
+    // 邮箱验证码死信队列绑定
+    @Bean
+    public Binding dlqEmailCodeBinding() {
+        return BindingBuilder.bind(dlqEmailCodeQueue())
+                .to(dlxEmailCodeExchange())
+                .with(MQConstants.DLQ_EMAIL_CODE);
     }
 }
 

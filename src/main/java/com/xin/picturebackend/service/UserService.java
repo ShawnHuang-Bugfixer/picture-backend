@@ -28,7 +28,7 @@ public interface UserService extends IService<User> {
      * @param checkPassword 校验密码
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(String userAccount, String userPassword, String checkPassword, String email, String code);
 
     LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request, HttpServletResponse response);
 
@@ -53,4 +53,6 @@ public interface UserService extends IService<User> {
     void getOnceToken(HttpServletResponse response);
 
     BaseResponse<Boolean> updateUserInfo(UserUpdateRequest userUpdateRequest);
+
+    boolean isEmailRegistered(String email);
 }

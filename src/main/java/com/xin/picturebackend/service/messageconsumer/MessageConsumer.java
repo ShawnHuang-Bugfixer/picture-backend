@@ -1,4 +1,4 @@
-package com.xin.picturebackend.service.msgpush.messageconsumer;
+package com.xin.picturebackend.service.messageconsumer;
 
 import cn.hutool.json.JSONUtil;
 import com.rabbitmq.client.Channel;
@@ -11,6 +11,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -25,7 +26,7 @@ import java.nio.charset.StandardCharsets;
  * @author 黄兴鑫
  * @since 2025/6/30 11:33
  */
-@Component
+@Service
 @Slf4j
 public class MessageConsumer {
 

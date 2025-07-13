@@ -1,6 +1,7 @@
 package com.xin.picturebackend.controller;
 
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xin.picturebackend.annotation.AuthCheck;
 import com.xin.picturebackend.auth.StpInterfaceImpl;
@@ -50,13 +51,15 @@ public class UserController {
      * 用户注册
      */
     @PostMapping("/register")
-    public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest request) {
-        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
-        String userPassword = request.getUserPassword();
-        String checkPassword = request.getCheckPassword();
-        String userAccount = request.getUserAccount();
-        long l = userService.userRegister(userAccount, userPassword, checkPassword);
-        return ResultUtils.success(l);
+    public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+        ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
+        String userPassword = userRegisterRequest.getUserPassword();
+        String checkPassword = userRegisterRequest.getCheckPassword();
+        String userAccount = userRegisterRequest.getUserAccount();
+        String email = userRegisterRequest.getEmail();
+        String code = userRegisterRequest.getCode();
+        long userId = userService.userRegister(userAccount, userPassword, checkPassword, email, code);
+        return ResultUtils.success(userId);
     }
 
     @PostMapping("/login")

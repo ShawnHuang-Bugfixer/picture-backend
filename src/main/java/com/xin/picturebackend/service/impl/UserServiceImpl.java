@@ -15,6 +15,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xin.picturebackend.common.BaseResponse;
 import com.xin.picturebackend.common.ResultUtils;
 import com.xin.picturebackend.config.CookiesProperties;
+import com.xin.picturebackend.config.custom.EmailCodeProperties;
 import com.xin.picturebackend.constant.RedisKeyConstant;
 import com.xin.picturebackend.exception.BusinessException;
 import com.xin.picturebackend.exception.ErrorCode;
@@ -22,20 +23,24 @@ import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.user.UserQueryRequest;
 import com.xin.picturebackend.model.dto.user.UserUpdateRequest;
 import com.xin.picturebackend.model.entity.User;
+import com.xin.picturebackend.model.entity.UserEmail;
 import com.xin.picturebackend.model.enums.UserRoleEnum;
 import com.xin.picturebackend.model.vo.LoginUserVO;
 import com.xin.picturebackend.model.vo.UserVO;
 import com.xin.picturebackend.service.TokenService;
+import com.xin.picturebackend.service.UserEmailService;
 import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.mapper.UserMapper;
 import com.xin.picturebackend.token.RefreshToken;
 import com.xin.picturebackend.utils.CookieUtil;
+import com.xin.picturebackend.utils.EmailUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.PostConstruct;
@@ -44,7 +49,10 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -68,6 +76,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Resource
     private CookiesProperties cookiesProperties;
 
+    @Resource
+    private UserEmailService userEmailService;
+
+    @Resource
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Resource
+    private EmailCodeProperties emailCodeProperties;
+
     private String domain;
 
     private String refreshTokenName;
@@ -83,28 +100,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         domain = refreshCookie.getDomain();
     }
 
-
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
-        // 1. 参数校验
-        // 2. 用户名重复校验
-        // 3. 密码加密
-        // 4. 数据库插入数据
-        ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword, checkPassword), ErrorCode.PARAMS_ERROR, "参数为空");
-        ThrowUtils.throwIf(userAccount.length() < 4, ErrorCode.PARAMS_ERROR, "用户账号过短");
-        ThrowUtils.throwIf(userPassword.length() < 8 || checkPassword.length() < 8, ErrorCode.PARAMS_ERROR, "密码过短");
-        ThrowUtils.throwIf(!userPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "密码不一致");
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userAccount", userAccount);
-        Long l = baseMapper.selectCount(queryWrapper);
-        ThrowUtils.throwIf(l > 0, ErrorCode.PARAMS_ERROR, "账号重复");
+    @Transactional
+    public long userRegister(String userAccount, String userPassword, String checkPassword, String email, String code) {
+        // 1. 格式校验
+        checkRegistrationLegality(userAccount, userPassword, checkPassword, code, email);
+        String codeKey = RedisKeyConstant.EMAIL_CODE_KEY_PREFIX + email;
+        String failKey = RedisKeyConstant.EMAIL_CODE_FAIL_COUNT_PREFIX + email;
+
+        // 2. 验证码校验
+        validateCode(codeKey, failKey, email, code);
+
+        // 3. 用户注册入库
+        Long userId = createUser(userAccount, userPassword, email);
+
+        // 4. 清理 Redis 中验证码相关记录
+        redisTemplate.delete(Arrays.asList(codeKey, failKey,
+                RedisKeyConstant.EMAIL_SEND_COOLDOWN_KEY_PREFIX + email,
+                RedisKeyConstant.EMAIL_SEND_LIMIT_KEY_PREFIX + email));
+
+
+        return userId;
+    }
+
+    private void validateCode(String codeKey, String failKey, String email, String code) {
+        // 1. 获取验证码
+        String cachedCode = redisTemplate.opsForValue().get(codeKey);
+
+        // 1.1 校验失败次数
+        String failCountStr = redisTemplate.opsForValue().get(failKey);
+        int failCount = failCountStr != null ? Integer.parseInt(failCountStr) : 0;
+        if (failCount >= emailCodeProperties.getMaxValidateFailCount()) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码错误次数过多，请稍后再试");
+        }
+
+        // 1.2 验证码不存在
+        if (cachedCode == null) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码已过期或未发送");
+        }
+
+        // 1.3 验证码错误
+        if (!cachedCode.equals(code)) {
+            redisTemplate.opsForValue().increment(failKey);
+            // 可选：设置失败计数过期时间，如 30 分钟
+            redisTemplate.expire(failKey, Duration.ofMinutes(emailCodeProperties.getValidateFailCountExpireMinutes()));
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "验证码错误");
+        }
+    }
+
+    @Transactional
+    public Long createUser(String userAccount, String userPassword, String email) {
         User user = new User();
-        user.setUserName("默认名称");
+        user.setUserName(userAccount);
         user.setUserRole(UserRoleEnum.USER.getValue());
         user.setUserAccount(userAccount);
         user.setUserPassword(getEncryptPassword(userPassword));
         int insert = baseMapper.insert(user);
-        ThrowUtils.throwIf(insert < 1, ErrorCode.SYSTEM_ERROR, "注册失败，数据库异常");
+        ThrowUtils.throwIf(insert < 1, ErrorCode.SYSTEM_ERROR, "注册失败，请稍后再试！");
+        UserEmail userEmail = new UserEmail();
+        userEmail.setEmail(email);
+        userEmail.setUserId(user.getId());
+        userEmail.setCreatedAt(new Date());
+        boolean save = userEmailService.save(userEmail);
+        ThrowUtils.throwIf(!save, ErrorCode.SYSTEM_ERROR, "注册失败，请稍后再试");
         return user.getId();
     }
 
@@ -312,6 +370,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         boolean result = updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    @Override
+    public boolean isEmailRegistered(String email) {
+        QueryWrapper<UserEmail> userEmailQueryWrapper = new QueryWrapper<>();
+        userEmailQueryWrapper.eq(StrUtil.isNotBlank(email), "email", email);
+        return userEmailService.exists(userEmailQueryWrapper);
+    }
+
+    private void checkRegistrationLegality(String userAccount, String userPassword, String checkPassword, String code, String email) {
+        ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword, checkPassword, code), ErrorCode.PARAMS_ERROR, "请求参数错误！");
+        ThrowUtils.throwIf(!userPassword.equals(checkPassword), ErrorCode.PARAMS_ERROR, "密码不一致！");
+        ThrowUtils.throwIf(userAccount.length() < 4, ErrorCode.PARAMS_ERROR, "用户账号过短！");
+        ThrowUtils.throwIf(userPassword.length() < 8, ErrorCode.PARAMS_ERROR, "密码过短！");
+        ThrowUtils.throwIf(!EmailUtil.isValidEmail(email), ErrorCode.PARAMS_ERROR, "邮箱格式错误！");
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userAccount", userAccount);
+        Long l = baseMapper.selectCount(queryWrapper);
+        ThrowUtils.throwIf(l > 0, ErrorCode.PARAMS_ERROR, "账号重复");
     }
 }
 
