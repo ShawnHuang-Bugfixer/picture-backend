@@ -126,10 +126,10 @@ app:
     event:
       max: 3
   email-code:
-    max-sends-per-period: 2
-    send-limit-expire-minutes: 30
+    max-sends-per-period: 3
+    send-limit-expire-minutes: 15
     code-length: 6
-    send-cooldown-seconds: 20
+    send-cooldown-seconds: 60
     code-expire-minutes: 5
-    validate-fail-count-expire-minutes: 30
-    max-validate-fail-count: 5
+    validate-fail-count-expire-minutes: 3
+    max-validate-fail-count: 15

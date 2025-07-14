@@ -213,7 +213,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    @SaCheckLogin
     public User getLoginUser(HttpServletRequest request) {
         Long loginId = StpUtil.getLoginIdAsLong();
         String jti = StpUtil.getExtra("jti").toString();
@@ -343,7 +342,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public void getOnceToken(HttpServletResponse response) {
         long userId = StpUtil.getLoginIdAsLong();
-        String key = RedisKeyConstant.ONCE_TOKEN_PREFIX + userId;
+        String key = RedisKeyConstant.ONCE_TOKEN_LOGIN_PREFIX + userId;
         ValueOperations<String, String> operations = stringRedisTemplate.opsForValue();
         String uuid = UUID.randomUUID().toString();
         // 产生一次性令牌并写入 redis 和 cookie。

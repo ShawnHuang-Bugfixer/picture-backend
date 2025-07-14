@@ -139,7 +139,7 @@ public class TokenServiceImpl implements TokenService {
         CookiesProperties.CookieInfo refreshTokenInfo = cookiesProperties.getCookieConfigs().get(configKey);
         Cookie cookie = CookieUtil.buildCookie(refreshTokenInfo, token);
         String setCookieHeader = CookieUtil.buildSetCookieHeader(cookie, refreshTokenInfo.getSameSite());
-        log.error(setCookieHeader);
+        log.debug("设置请求头 Cookie ：{}", setCookieHeader);
         response.addHeader("Set-Cookie", setCookieHeader);
     }
 
