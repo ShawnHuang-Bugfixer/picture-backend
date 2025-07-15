@@ -4,41 +4,15 @@ server:
     context-path: /api
 
 spring:
-  rabbitmq:
-    host: 192.168.200.100           # RabbitMQ 主机地址
-    port: 5672                # 默认端口
-    username: admin           # 登录用户名（建议换成自己的）
-    password: REDACTED_RMQ_DEV_PASSWORD           # 登录密码
-    virtual-host: /           # 虚拟主机（可按需自定义）
-    template:
-      exchange: x.message.direct
-    listener:
-      simple:
-        concurrency: 2        # 最小并发消费者数
-        max-concurrency: 3   # 最大并发消费者数
-        prefetch: 1           # 每次只拉取一个消息
-        acknowledge-mode: auto
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd'T'HH:mm:ss
   application:
     name: picture-backend
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/picture
-    username: root
-    password: REDACTED_KNIFE4J_PASSWORD
   # 开放更大的文件上传体积
   servlet:
     multipart:
       max-file-size: 4MB
-  redis:
-    host: 192.168.200.100
-    port: 6379
-    database: 0
-    timeout: 3000ms
-  profiles:
-    active: local
   mail:
     host: smtp.qq.com
     port: 465
@@ -60,6 +34,8 @@ spring:
     encoding: UTF-8
     mode: HTML
     cache: false
+  profiles:
+    active: prod
 
 sa-token:
   # jwt秘钥
@@ -89,7 +65,7 @@ knife4j:
 # 日志级别修改
 logging:
   level:
-    com.xin.picturebackend: debug
+    com.xin.picturebackend: info
 
 # 自定义 app 配置, 并未设置默认值，不可删除任意项。
 app:
