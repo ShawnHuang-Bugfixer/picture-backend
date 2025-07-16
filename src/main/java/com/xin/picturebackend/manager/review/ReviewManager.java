@@ -46,7 +46,7 @@ public class ReviewManager {
         //2.2设置审核策略 不传则为默认策略（预设）
         request.setBizType(BIZ_TYPE);
         //2.3设置 bucket 中的图片位置
-        request.setObjectKey("/space/1906728908816793601/2025-07-08_geuyaj65xvmv6pd8.webp");
+        request.setObjectKey(cosObjKey);
         return request;
     }
 

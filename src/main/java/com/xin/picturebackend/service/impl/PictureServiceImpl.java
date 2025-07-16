@@ -76,8 +76,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.xin.picturebackend.utils.COSKeyUtils.cosKeyHandler;
-import static com.xin.picturebackend.utils.COSKeyUtils.cosOriginKeyHandler;
+import static com.xin.picturebackend.utils.COSKeyUtils.*;
 
 /**
  * @author Lenovo
@@ -936,8 +935,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      */
     private static Picture getPicture(String picName, User user, UploadPictureResult uploadPictureResult, Long pictureId) {
         Picture picture = new Picture();
-        picture.setUrl(uploadPictureResult.getUrl());
-        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
+        // http://resourses.collabimage.afishingcat.xin/space/1945054164708327426/2025-07-15_n3qyflw7ucq0ssg0.webp
+
+        // 强制替换 URL 和缩略图 URL 的协议为 https
+        String url = uploadPictureResult.getUrl();
+        url = switchUrlFromHttpToHttps(url);
+        picture.setUrl(url);
+        picture.setThumbnailUrl(switchUrlFromHttpToHttps(uploadPictureResult.getThumbnailUrl()));
         if (StrUtil.isNotBlank(picName)) {
             picture.setName(picName);
         } else {

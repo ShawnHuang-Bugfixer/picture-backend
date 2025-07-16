@@ -52,7 +52,7 @@ public class PictureHandshakeInterceptor implements HandshakeInterceptor {
             // 参数校验
             String pictureId = servletRequest.getParameter("pictureId");
             if (StrUtil.isBlank(pictureId)) {
-                log.error("缺少图片参数，拒绝握手");
+                log.debug("缺少图片参数，拒绝握手");
                 return false;
             }
             // 连接校验
@@ -65,45 +65,45 @@ public class PictureHandshakeInterceptor implements HandshakeInterceptor {
 
     @Override
     public void afterHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response, @NonNull WebSocketHandler wsHandler, Exception exception) {
-        log.error("握手结束");
+        log.debug("握手结束");
     }
 
     private boolean hasPermissionThenInitial(HttpServletRequest servletRequest, String pictureId, Map<String, Object> attributes) {
         User loginUser = userService.getLoginUser(servletRequest);
         if (ObjUtil.isEmpty(loginUser)) {
-            log.error("用户未登录，拒绝握手");
+            log.debug("用户未登录，拒绝握手");
             return false;
         }
         // 权限校验
         Picture dbPicture = pictureService.getById(pictureId);
         if (ObjUtil.isNull(dbPicture)) {
-            log.error("图片不存在，拒绝握手");
+            log.debug("图片不存在，拒绝握手");
             return false;
         }
         if (ObjUtil.isNull(dbPicture.getSpaceId())) {
-            log.error("图片不属于任何空间，拒绝握手");
+            log.debug("图片不属于任何空间，拒绝握手");
             return false;
         }
         Space dbSpace = spaceService.getById(dbPicture.getSpaceId());
         if (ObjUtil.isNull(dbSpace)) {
-            log.error("空间不存在，拒绝握手");
+            log.debug("空间不存在，拒绝握手");
             return false;
         }
         if (dbSpace.getSpaceType().equals(SpaceTypeEnum.PRIVATE.getValue())) {
-            log.error("私人空间不支持协作编辑");
+            log.debug("私人空间不支持协作编辑");
             return false;
         }
         if (dbSpace.getSpaceType().equals(SpaceTypeEnum.TEAM.getValue())) {
             boolean hasPermission = StpUtil.hasPermission(PermissionConstants.TEAM_MODIFY_IMAGE);
             if (!hasPermission) {
-                log.error("用户没有团队空间修改图片权限，拒绝握手");
+                log.debug("用户没有团队空间修改图片权限，拒绝握手");
                 return false;
             }
         }
         attributes.put("user", loginUser);
         attributes.put("pictureId", Long.parseLong(pictureId));
         attributes.put("userId", loginUser.getId());
-        log.error("握手成功！");
+        log.debug("握手成功！");
         return true;
     }
 }

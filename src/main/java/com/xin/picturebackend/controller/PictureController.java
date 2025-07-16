@@ -133,7 +133,7 @@ public class PictureController {
 
     /**
      * 分页获取图片列表（仅管理员可用）
-     * todo 使用该接口整合人工复审，人工申诉审核（ai suspicious、appeal pending）
+     * 该接口整合人工复审，人工申诉审核（ai suspicious、appeal pending）
      */
     @PostMapping("/list/page")
     @SaCheckPermission(PermissionConstants.ADMIN_ANALYZE_PERMISSIONS)
@@ -176,8 +176,8 @@ public class PictureController {
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
-        List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意");
-        List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报");
+        List<String> tagList = Arrays.asList("热门", "生活", "艺术", "旅游", "创意");
+        List<String> categoryList = Arrays.asList("现代", "古典", "巍峨山峰", "秀丽江水", "名胜古迹");
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);
         return ResultUtils.success(pictureTagCategory);

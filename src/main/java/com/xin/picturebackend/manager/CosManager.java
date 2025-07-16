@@ -9,6 +9,7 @@ import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.PicOperations;
 import com.xin.picturebackend.config.CosClientConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -30,6 +31,12 @@ public class CosManager {
 
     @Resource
     private COSClient cosClient;
+
+    @Value("${app.image.thumbnail.width}")
+    private int thumbnailWidth;
+
+    @Value("${app.image.thumbnail.height}")
+    private int thumbnailHeight;
 
     // ... 一些操作 COS 的方法
 
@@ -84,7 +91,7 @@ public class CosManager {
             String thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
             thumbnailRule.setFileId(thumbnailKey);
             // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
-            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>", 128, 128));
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>", thumbnailWidth, thumbnailHeight));
             rules.add(thumbnailRule);
         }
         // 构造处理参数
