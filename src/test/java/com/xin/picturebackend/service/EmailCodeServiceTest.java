@@ -1,6 +1,7 @@
 package com.xin.picturebackend.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
@@ -10,6 +11,7 @@ import javax.annotation.Resource;
  * @since 2025/7/13 16:49
  */
 @SpringBootTest
+@Disabled("依赖真实Redis冷却状态、MQ和业务数据，默认环境禁用")
 public class EmailCodeServiceTest {
     @Resource
     private EmailCodeService emailCodeService;

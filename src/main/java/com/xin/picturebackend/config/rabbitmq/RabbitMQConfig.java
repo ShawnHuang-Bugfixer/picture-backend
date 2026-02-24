@@ -141,5 +141,43 @@ public class RabbitMQConfig {
                 .to(dlxEmailCodeExchange())
                 .with(MQConstants.DLQ_EMAIL_CODE);
     }
+
+    // 超分任务交换机
+    @Bean
+    public DirectExchange srTaskExchange() {
+        return new DirectExchange(MQConstants.SR_TASK_EXCHANGE);
+    }
+
+    // 超分结果交换机
+    @Bean
+    public DirectExchange srResultExchange() {
+        return new DirectExchange(MQConstants.SR_RESULT_EXCHANGE);
+    }
+
+    // 超分任务队列（Python 消费）
+    @Bean
+    public Queue srTaskQueue() {
+        return QueueBuilder.durable(MQConstants.SR_TASK_QUEUE).build();
+    }
+
+    // 超分结果队列（Java 消费）
+    @Bean
+    public Queue srResultQueue() {
+        return QueueBuilder.durable(MQConstants.SR_RESULT_QUEUE).build();
+    }
+
+    @Bean
+    public Binding srTaskBinding() {
+        return BindingBuilder.bind(srTaskQueue())
+                .to(srTaskExchange())
+                .with(MQConstants.SR_TASK_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding srResultBinding() {
+        return BindingBuilder.bind(srResultQueue())
+                .to(srResultExchange())
+                .with(MQConstants.SR_RESULT_ROUTING_KEY);
+    }
 }
 

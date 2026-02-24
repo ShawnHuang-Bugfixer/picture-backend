@@ -1,6 +1,7 @@
 package com.xin.picturebackend.manager;
 
 import com.xin.picturebackend.manager.email.MailSenderManager;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -13,6 +14,7 @@ import javax.mail.MessagingException;
  * @since 2025/7/11 10:56
  */
 @SpringBootTest
+@Disabled("依赖真实邮箱服务和外网环境，默认测试环境禁用")
 public class MaiMessageTest {
     @Resource
     private MailSenderManager mailSenderManager;

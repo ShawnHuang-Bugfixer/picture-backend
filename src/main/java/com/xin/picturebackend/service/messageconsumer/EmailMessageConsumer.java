@@ -8,18 +8,18 @@ import com.xin.picturebackend.model.messagequeue.email.EmailMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.mail.AuthenticationFailedException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 
 /**
  * 异步处理
  *
- * @author 黄兴鑫
  * @since 2025/7/13 9:19
  */
 @Service
@@ -35,53 +35,65 @@ public class EmailMessageConsumer {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
 
         try {
-            // 反序列化消息体
             byte[] body = message.getBody();
             EmailMessage emailMessage = JSONUtil.toBean(new String(body, StandardCharsets.UTF_8), EmailMessage.class);
 
             String email = emailMessage.getEmail();
             String code = emailMessage.getCode();
 
-            // 执行邮件发送
             boolean success = mailSenderManager.sendEmailCode(email, code);
-
             if (success) {
-                channel.basicAck(deliveryTag, false); // 正常确认
+                channel.basicAck(deliveryTag, false);
                 log.info("验证码邮件发送成功: {}", email);
             } else {
-                int retryCount = getRetryCount(message);
-                if (retryCount >= MAX_RETRY_COUNT) {
-                    log.error("验证码邮件重试超过上限，将进入死信队列: {}", email);
-                    channel.basicReject(deliveryTag, false); // 不重回队列，进入 DLQ
-                } else {
-                    log.warn("验证码邮件发送失败，第 {} 次尝试，将重试: {}", retryCount + 1, email);
-                    channel.basicNack(deliveryTag, false, true); // 重入队列
-                }
+                handleRetry(message, channel, deliveryTag, email, null);
             }
-
         } catch (Exception e) {
-            log.error("处理验证码消息异常，消息体：{}，错误：{}", new String(message.getBody()), e.getMessage(), e);
-            try {
-                channel.basicNack(deliveryTag, false, true); // 出现异常也重试
-            } catch (IOException ioException) {
-                log.error("RabbitMQ nack 异常: {}", ioException.getMessage(), ioException);
-            }
+            log.error("处理验证码消息异常，消息体：{}，错误：{}", new String(message.getBody(), StandardCharsets.UTF_8), e.getMessage(), e);
+            handleRetry(message, channel, deliveryTag, null, e);
         }
     }
 
-    /**
-     * 提取消息历史重试次数（基于 RabbitMQ 死信机制）
-     */
     private int getRetryCount(Message message) {
         Map<String, Object> headers = message.getMessageProperties().getHeaders();
-        List<Map<String, Object>> xDeath = (List<Map<String, Object>>) headers.get("x-death");
-        if (xDeath != null && !xDeath.isEmpty()) {
-            Object count = xDeath.get(0).get("count");
-            if (count instanceof Long) {
-                return ((Long) count).intValue();
-            }
+        Object count = headers.get("x-retry-count");
+        if (count instanceof Integer) {
+            return (Integer) count;
+        }
+        if (count instanceof Long) {
+            return ((Long) count).intValue();
         }
         return 0;
     }
 
+    private void handleRetry(Message message, Channel channel, long deliveryTag, String email, Exception exception) {
+        int retryCount = getRetryCount(message);
+        boolean authError = isMailAuthError(exception);
+
+        try {
+            if (authError || retryCount >= MAX_RETRY_COUNT) {
+                log.error("验证码邮件发送失败，不再重试，进入死信队列，email={}, retryCount={}, authError={}",
+                        email, retryCount, authError);
+                channel.basicReject(deliveryTag, false);
+                return;
+            }
+
+            message.getMessageProperties().getHeaders().put("x-retry-count", retryCount + 1);
+            log.warn("验证码邮件发送失败，第 {} 次重试，email={}", retryCount + 1, email);
+            channel.basicNack(deliveryTag, false, true);
+        } catch (IOException ioException) {
+            log.error("RabbitMQ nack/reject 异常: {}", ioException.getMessage(), ioException);
+        }
+    }
+
+    private boolean isMailAuthError(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof MailAuthenticationException || current instanceof AuthenticationFailedException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
 }
