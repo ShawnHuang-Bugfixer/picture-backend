@@ -8,6 +8,7 @@
         <id property="id" column="id"/>
         <result property="taskNo" column="task_no"/>
         <result property="userId" column="user_id"/>
+        <result property="spaceId" column="space_id"/>
         <result property="bizType" column="biz_type"/>
         <result property="inputFileKey" column="input_file_key"/>
         <result property="outputFileKey" column="output_file_key"/>
@@ -27,7 +28,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,task_no,user_id,biz_type,input_file_key,output_file_key,
+        id,task_no,user_id,space_id,biz_type,input_file_key,output_file_key,
         status,progress,scale,model_name,model_version,retry_count,max_retry,error_code,error_msg,
         trace_id,cancel_requested,created_at,updated_at
     </sql>

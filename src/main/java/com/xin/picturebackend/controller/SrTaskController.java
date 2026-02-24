@@ -7,8 +7,12 @@ import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
 import com.xin.picturebackend.model.dto.sr.SrTaskCreateRequest;
 import com.xin.picturebackend.model.dto.sr.SrTaskQueryRequest;
+import com.xin.picturebackend.model.dto.sr.SrTaskResultQueryRequest;
+import com.xin.picturebackend.model.dto.sr.SrTaskSpaceResultQueryRequest;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.vo.sr.SrTaskVO;
+import com.xin.picturebackend.model.vo.sr.SrTaskResultVO;
+import com.xin.picturebackend.service.SrTaskResultService;
 import com.xin.picturebackend.service.SrTaskService;
 import com.xin.picturebackend.service.UserService;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +32,9 @@ public class SrTaskController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private SrTaskResultService srTaskResultService;
 
     @PostMapping("/create")
     public BaseResponse<Long> createTask(@RequestBody SrTaskCreateRequest createRequest, HttpServletRequest request) {
@@ -52,5 +59,20 @@ public class SrTaskController {
         Page<SrTaskVO> result = srTaskService.listMyTaskByPage(queryRequest, loginUser);
         return ResultUtils.success(result);
     }
-}
 
+    @PostMapping("/result/list/page/my/vo")
+    public BaseResponse<Page<SrTaskResultVO>> listMyResultByPage(@RequestBody SrTaskResultQueryRequest queryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Page<SrTaskResultVO> result = srTaskResultService.listMyResultByPage(queryRequest, loginUser);
+        return ResultUtils.success(result);
+    }
+
+    @PostMapping("/result/list/page/space/vo")
+    public BaseResponse<Page<SrTaskResultVO>> listSpaceResultByPage(@RequestBody SrTaskSpaceResultQueryRequest queryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Page<SrTaskResultVO> result = srTaskResultService.listSpaceResultByPage(queryRequest, loginUser);
+        return ResultUtils.success(result);
+    }
+}

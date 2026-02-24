@@ -17,13 +17,19 @@ import com.xin.picturebackend.mapper.SrTaskMapper;
 import com.xin.picturebackend.model.dto.sr.SrTaskCreateRequest;
 import com.xin.picturebackend.model.dto.sr.SrTaskQueryRequest;
 import com.xin.picturebackend.model.entity.Picture;
+import com.xin.picturebackend.model.entity.Space;
+import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.SrTask;
 import com.xin.picturebackend.model.entity.User;
 import com.xin.picturebackend.model.enums.SrTaskStatusEnum;
+import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.messagequeue.sr.SrResultMessage;
 import com.xin.picturebackend.model.messagequeue.sr.SrTaskMessage;
 import com.xin.picturebackend.model.vo.sr.SrTaskVO;
 import com.xin.picturebackend.service.PictureService;
+import com.xin.picturebackend.service.SpaceService;
+import com.xin.picturebackend.service.SpaceUserService;
+import com.xin.picturebackend.service.SrTaskResultService;
 import com.xin.picturebackend.service.SrTaskService;
 import com.xin.picturebackend.service.UserService;
 import com.xin.picturebackend.utils.COSKeyUtils;
@@ -63,10 +69,19 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
     private PictureService pictureService;
 
     @Resource
+    private SpaceService spaceService;
+
+    @Resource
+    private SpaceUserService spaceUserService;
+
+    @Resource
     private UserService userService;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private SrTaskResultService srTaskResultService;
 
     @Value("${cos.client.host}")
     private String cosClientHost;
@@ -80,13 +95,15 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         String modelName = StrUtil.blankToDefault(request.getModelName(), "RealESRGAN_x4plus");
         String modelVersion = StrUtil.blankToDefault(request.getModelVersion(), "v1.0.0");
 
-        String inputFileKey = resolveInputFileKey(request, loginUser);
+        TaskSourceInfo taskSourceInfo = resolveTaskSource(request, loginUser);
+        String inputFileKey = taskSourceInfo.getInputFileKey();
         String taskNo = generateTaskNo();
         String traceId = "trace_" + UUID.fastUUID().toString(true);
 
         SrTask srTask = new SrTask();
         srTask.setTaskNo(taskNo);
         srTask.setUserId(loginUser.getId());
+        srTask.setSpaceId(taskSourceInfo.getSpaceId());
         srTask.setBizType("image");
         srTask.setInputFileKey(inputFileKey);
         srTask.setStatus(SrTaskStatusEnum.QUEUED.getValue());
@@ -166,6 +183,7 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleResultMessage(SrResultMessage resultMessage) {
         if (resultMessage == null || resultMessage.getTaskId() == null || StrUtil.isBlank(resultMessage.getStatus())) {
             return;
@@ -217,7 +235,13 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
             updateTask.setErrorCode(null);
             updateTask.setErrorMsg(null);
         }
-        this.updateById(updateTask);
+        boolean updated = this.updateById(updateTask);
+        if (!updated) {
+            return;
+        }
+        if (SrTaskStatusEnum.SUCCEEDED == statusEnum) {
+            srTaskResultService.saveOrUpdateSuccessResult(srTask, resultMessage);
+        }
     }
 
     private boolean isTransitionAllowed(String currentStatus, String targetStatus) {
@@ -250,22 +274,56 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         }
     }
 
-    private String resolveInputFileKey(SrTaskCreateRequest request, User loginUser) {
+    private TaskSourceInfo resolveTaskSource(SrTaskCreateRequest request, User loginUser) {
         if (StrUtil.isNotBlank(request.getInputFileKey())) {
-            return request.getInputFileKey();
+            return new TaskSourceInfo(request.getInputFileKey(), null);
         }
         Long pictureId = request.getPictureId();
         ThrowUtils.throwIf(pictureId == null || pictureId <= 0, ErrorCode.PARAMS_ERROR, "pictureId 和 inputFileKey 不能同时为空");
         Picture picture = pictureService.getById(pictureId);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-        boolean isOwner = picture.getUserId().equals(loginUser.getId());
-        ThrowUtils.throwIf(!isOwner && !userService.isAdmin(loginUser), ErrorCode.NO_AUTH_ERROR);
+        checkPictureAccess(picture, loginUser);
         ThrowUtils.throwIf(StrUtil.isBlank(picture.getUrl()), ErrorCode.PARAMS_ERROR, "图片 url 为空");
-        return COSKeyUtils.cosKeyHandler(picture.getUrl(), cosClientHost);
+        String inputFileKey = COSKeyUtils.cosKeyHandler(picture.getUrl(), cosClientHost);
+        return new TaskSourceInfo(inputFileKey, picture.getSpaceId());
+    }
+
+    private void checkPictureAccess(Picture picture, User loginUser) {
+        if (picture.getUserId().equals(loginUser.getId()) || userService.isAdmin(loginUser)) {
+            return;
+        }
+        Long spaceId = picture.getSpaceId();
+        ThrowUtils.throwIf(spaceId == null, ErrorCode.NO_AUTH_ERROR);
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+        ThrowUtils.throwIf(space.getSpaceType() == null || space.getSpaceType() != SpaceTypeEnum.TEAM.getValue(), ErrorCode.NO_AUTH_ERROR);
+        SpaceUser spaceUser = spaceUserService.lambdaQuery()
+                .eq(SpaceUser::getSpaceId, spaceId)
+                .eq(SpaceUser::getUserId, loginUser.getId())
+                .one();
+        ThrowUtils.throwIf(spaceUser == null, ErrorCode.NO_AUTH_ERROR);
     }
 
     private String generateTaskNo() {
         String now = DateUtil.format(new Date(), DatePattern.PURE_DATETIME_MS_PATTERN);
         return "SR" + now + RandomUtil.randomNumbers(4);
+    }
+
+    private static class TaskSourceInfo {
+        private final String inputFileKey;
+        private final Long spaceId;
+
+        private TaskSourceInfo(String inputFileKey, Long spaceId) {
+            this.inputFileKey = inputFileKey;
+            this.spaceId = spaceId;
+        }
+
+        public String getInputFileKey() {
+            return inputFileKey;
+        }
+
+        public Long getSpaceId() {
+            return spaceId;
+        }
     }
 }
