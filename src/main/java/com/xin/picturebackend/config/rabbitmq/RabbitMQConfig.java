@@ -3,6 +3,7 @@ package com.xin.picturebackend.config.rabbitmq;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,6 +13,10 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class RabbitMQConfig {
+
+    @Value("${sr.result.queue-name:" + MQConstants.SR_RESULT_QUEUE + "}")
+    private String srResultQueueName;
+
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter(); //使用 JSON 格式消息转换器
@@ -163,7 +168,7 @@ public class RabbitMQConfig {
     // 超分结果队列（Java 消费）
     @Bean
     public Queue srResultQueue() {
-        return QueueBuilder.durable(MQConstants.SR_RESULT_QUEUE).build();
+        return QueueBuilder.durable(srResultQueueName).build();
     }
 
     @Bean

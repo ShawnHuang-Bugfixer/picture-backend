@@ -20,5 +20,12 @@ public class SrTaskMessage {
     private String modelVersion;
     private Integer attempt;
     private String traceId;
-}
+    private VideoOptions videoOptions;
 
+    @Data
+    public static class VideoOptions {
+        private Boolean keepAudio;
+        private Boolean extractFrameFirst;
+        private Double fpsOverride;
+    }
+}

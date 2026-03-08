@@ -14,6 +14,11 @@ import java.io.Serializable;
 public class PictureUploadRequest implements Serializable {
 
     /**
+     * 媒体类型：image / video，默认 image
+     */
+    private String mediaType;
+
+    /**
      * 图片 id（用于修改）
      */
     private Long id;

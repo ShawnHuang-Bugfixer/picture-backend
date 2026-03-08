@@ -3,9 +3,12 @@ package com.xin.picturebackend.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -71,6 +74,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -87,6 +91,11 @@ import static com.xin.picturebackend.utils.COSKeyUtils.*;
 @Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
+    private static final String MEDIA_TYPE_IMAGE = "image";
+    private static final String MEDIA_TYPE_VIDEO = "video";
+    private static final long SINGLE_VIDEO_MAX_SIZE = 200 * 1024 * 1024L;
+    private static final Set<String> ALLOW_VIDEO_FORMAT_LIST = Set.of("mp4", "mov", "mkv", "avi", "webm", "m4v");
+
     @Resource
     private URLPictureUpload urlPictureUploader;
 
@@ -145,6 +154,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     public PictureVO uploadPicture(Object resourceSource, PictureUploadRequest pictureUploadRequest, User user) {
         ThrowUtils.throwIf(ObjUtil.hasNull(resourceSource, pictureUploadRequest, user), ErrorCode.PARAMS_ERROR);
+        String mediaType = normalizeMediaType(pictureUploadRequest.getMediaType());
         Long id = pictureUploadRequest.getId();
         String picName = pictureUploadRequest.getPicName();
         Long spaceId = pictureUploadRequest.getSpaceId();
@@ -209,20 +219,29 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         // 4. 选择文件上传方式
         UploadPictureResult uploadPictureResult;
-        if (resourceSource instanceof MultipartFile file) {
-            // 文件上传
-            uploadPictureResult = filePictureUploader.uploadPicture(file, uploadPrefix);
+        if (MEDIA_TYPE_VIDEO.equals(mediaType)) {
+            ThrowUtils.throwIf(!(resourceSource instanceof MultipartFile), ErrorCode.PARAMS_ERROR, "视频仅支持文件上传");
+            uploadPictureResult = uploadVideo((MultipartFile) resourceSource, uploadPrefix);
         } else {
-            // url 上传
-            String resourceUrl = (String) resourceSource;
-            uploadPictureResult = urlPictureUploader.uploadPicture(resourceUrl, uploadPrefix);
+            if (resourceSource instanceof MultipartFile file) {
+                // 文件上传
+                uploadPictureResult = filePictureUploader.uploadPicture(file, uploadPrefix);
+            } else {
+                // url 上传
+                String resourceUrl = (String) resourceSource;
+                uploadPictureResult = urlPictureUploader.uploadPicture(resourceUrl, uploadPrefix);
+            }
         }
         // 5. 构造上传成功后的图片信息
         Picture picture = getPicture(picName, user, uploadPictureResult, id);
         picture.setSpaceId(spaceId);
         picture.setPicColor(uploadPictureResult.getPicColor());
-        // 5.1 重置审核状态
-        fillPicture(picture, user);
+        // 5.1 重置审核状态（视频默认过审，不进入图片审核链路）
+        if (isVideoFormat(uploadPictureResult.getPicFormat())) {
+            fillVideoReview(picture, user);
+        } else {
+            fillPicture(picture, user);
+        }
         // 6. 开启事务，新增或更新图片信息同时更新空间额度
         final Long finalSpaceId = spaceId;
         Boolean executeResult = transactionTemplate.execute(status -> {
@@ -241,7 +260,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 更新完毕后，重新读取一次 picture 对象
         Picture fullPicture = this.getById(picture.getId());
         // 普通用户上传到公共空间且图片未过审才需要审核
-        if (!userService.isAdmin(user) && spaceId == null && fullPicture.getReviewStatus() != PictureReviewStatusEnum.FINAL_APPROVED.getValue())
+        if (!userService.isAdmin(user)
+                && spaceId == null
+                && !isVideoFormat(fullPicture.getPicFormat())
+                && fullPicture.getReviewStatus() != PictureReviewStatusEnum.FINAL_APPROVED.getValue())
             sentReviewContentToMessageQueue(picture);
         // 6.1 添加到布隆过滤器
         if (executeResult != null && executeResult) {
@@ -746,6 +768,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (count > 1) {
             return;
         }
+        if (isVideoFormat(picture.getPicFormat())) {
+            String videoKey = cosKeyHandler(picture.getUrl(), cosClientHost);
+            cosManager.deleteObject(videoKey);
+            if (StrUtil.isNotBlank(picture.getThumbnailUrl()) && !StrUtil.equals(picture.getThumbnailUrl(), picture.getUrl())) {
+                String thumbnailKey = cosKeyHandler(picture.getThumbnailUrl(), cosClientHost);
+                cosManager.deleteObject(thumbnailKey);
+            }
+            return;
+        }
         String webpKey = cosKeyHandler(picture.getUrl(), cosClientHost);
         String thumbnailKey = cosKeyHandler(picture.getThumbnailUrl(), cosClientHost);
         String originKey = cosOriginKeyHandler(webpKey, thumbnailKey);
@@ -1052,6 +1083,68 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ReviewContentMessage reviewContentMessage = new ReviewContentMessage();
         reviewContentMessage.setPicId(picture.getId());
         amqpTemplate.convertAndSend(MQConstants.AUDIT_CONTENT_EXCHANGE, MQConstants.ROUTING_AUDIT_CONTENT, reviewContentMessage);
+    }
+
+    private String normalizeMediaType(String mediaType) {
+        if (StrUtil.isBlank(mediaType)) {
+            return MEDIA_TYPE_IMAGE;
+        }
+        String normalized = mediaType.trim().toLowerCase(Locale.ROOT);
+        ThrowUtils.throwIf(!MEDIA_TYPE_IMAGE.equals(normalized) && !MEDIA_TYPE_VIDEO.equals(normalized),
+                ErrorCode.PARAMS_ERROR, "mediaType 仅支持 image 或 video");
+        return normalized;
+    }
+
+    private boolean isVideoFormat(String format) {
+        if (StrUtil.isBlank(format)) {
+            return false;
+        }
+        return ALLOW_VIDEO_FORMAT_LIST.contains(format.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private UploadPictureResult uploadVideo(MultipartFile multipartFile, String uploadPathPrefix) {
+        ThrowUtils.throwIf(multipartFile == null, ErrorCode.PARAMS_ERROR, "文件不能为空！");
+        ThrowUtils.throwIf(multipartFile.getSize() <= 0, ErrorCode.PARAMS_ERROR, "文件为空！");
+        ThrowUtils.throwIf(multipartFile.getSize() > SINGLE_VIDEO_MAX_SIZE, ErrorCode.PARAMS_ERROR, "视频大小不能超过 200MB！");
+        String originalFilename = multipartFile.getOriginalFilename();
+        ThrowUtils.throwIf(StrUtil.isBlank(originalFilename), ErrorCode.PARAMS_ERROR, "文件名不能为空！");
+        String suffix = FileUtil.getSuffix(originalFilename).toLowerCase(Locale.ROOT);
+        ThrowUtils.throwIf(!ALLOW_VIDEO_FORMAT_LIST.contains(suffix), ErrorCode.PARAMS_ERROR, "视频类型错误！");
+
+        String uuid = RandomUtil.randomString(16);
+        String uploadFileName = String.format("%s_%s.%s", DateUtil.formatDate(new Date()), uuid, suffix);
+        String uploadPath = String.format("/%s/%s", uploadPathPrefix, uploadFileName);
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("video_upload_", "." + suffix);
+            multipartFile.transferTo(tempFile);
+            cosManager.putObject(uploadPath, tempFile);
+            UploadPictureResult uploadPictureResult = new UploadPictureResult();
+            uploadPictureResult.setUrl(StrUtil.removeSuffix(cosClientHost, "/") + uploadPath);
+            uploadPictureResult.setThumbnailUrl(uploadPictureResult.getUrl());
+            uploadPictureResult.setPicName(originalFilename);
+            uploadPictureResult.setPicSize(tempFile.length());
+            uploadPictureResult.setPicFormat(suffix);
+            uploadPictureResult.setPicWidth(0);
+            uploadPictureResult.setPicHeight(0);
+            uploadPictureResult.setPicScale(0D);
+            uploadPictureResult.setPicColor(null);
+            return uploadPictureResult;
+        } catch (Exception e) {
+            log.error("video upload error, filepath: {}", uploadPath, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "视频上传失败");
+        } finally {
+            if (tempFile != null && tempFile.exists() && !tempFile.delete()) {
+                log.warn("delete temp video file failed, path={}", tempFile.getAbsolutePath());
+            }
+        }
+    }
+
+    private void fillVideoReview(Picture picture, User loginUser) {
+        picture.setReviewStatus(PictureReviewStatusEnum.FINAL_APPROVED.getValue());
+        picture.setReviewerId(loginUser.getId());
+        picture.setReviewMessage("视频资源默认过审");
+        picture.setReviewTime(new Date());
     }
 }
 

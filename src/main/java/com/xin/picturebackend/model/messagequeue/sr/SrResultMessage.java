@@ -2,6 +2,8 @@ package com.xin.picturebackend.model.messagequeue.sr;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * Python -> Java 超分结果消息
  */
@@ -19,5 +21,12 @@ public class SrResultMessage {
     private String errorCode;
     private String errorMsg;
     private String traceId;
+    private Long outputSize;
+    private Integer outputWidth;
+    private Integer outputHeight;
+    private Long durationMs;
+    private BigDecimal fps;
+    private Integer bitrateKbps;
+    private String codec;
+    private String extraJson;
 }
-

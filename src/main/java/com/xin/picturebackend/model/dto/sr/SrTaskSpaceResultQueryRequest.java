@@ -19,6 +19,8 @@ public class SrTaskSpaceResultQueryRequest extends PageRequest implements Serial
 
     private String taskNo;
 
+    private String bizType;
+
     private String modelName;
 
     private Date startTime;
@@ -28,4 +30,3 @@ public class SrTaskSpaceResultQueryRequest extends PageRequest implements Serial
     @Serial
     private static final long serialVersionUID = 1L;
 }
-

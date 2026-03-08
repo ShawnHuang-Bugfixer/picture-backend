@@ -1,7 +1,6 @@
 package com.xin.picturebackend.service.messageconsumer;
 
 import cn.hutool.json.JSONUtil;
-import com.xin.picturebackend.config.rabbitmq.MQConstants;
 import com.xin.picturebackend.model.messagequeue.sr.SrResultMessage;
 import com.xin.picturebackend.service.SrTaskService;
 import org.springframework.amqp.core.Message;
@@ -20,7 +19,7 @@ public class SrResultMessageConsumer {
     @Resource
     private SrTaskService srTaskService;
 
-    @RabbitListener(queues = MQConstants.SR_RESULT_QUEUE)
+    @RabbitListener(queues = "#{@srResultQueue.name}")
     public void onResult(Message message) {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         SrResultMessage resultMessage = JSONUtil.toBean(body, SrResultMessage.class);

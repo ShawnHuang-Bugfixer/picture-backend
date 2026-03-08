@@ -12,12 +12,13 @@ spring:
   # 开放更大的文件上传体积
   servlet:
     multipart:
-      max-file-size: 4MB
+      max-file-size: 200MB
+      max-request-size: 200MB
   mail:
     host: smtp.qq.com
     port: 465
     username: 3306019801@qq.com
-    password: REDACTED_EMAIL_PASSWORD
+    password: hniodcqzfujvchjd
     protocol: smtps
     default-encoding: UTF-8
     properties:
@@ -113,3 +114,7 @@ app:
     code-expire-minutes: 5
     validate-fail-count-expire-minutes: 3
     max-validate-fail-count: 15
+
+sr:
+  result:
+    queue-name: sr.result.java.queue

@@ -71,6 +71,9 @@ public class SrTask implements Serializable {
     @TableField("trace_id")
     private String traceId;
 
+    @TableField("video_options_json")
+    private String videoOptionsJson;
+
     @TableField("cancel_requested")
     private Integer cancelRequested;
 

@@ -22,6 +22,7 @@
         <result property="errorCode" column="error_code"/>
         <result property="errorMsg" column="error_msg"/>
         <result property="traceId" column="trace_id"/>
+        <result property="videoOptionsJson" column="video_options_json"/>
         <result property="cancelRequested" column="cancel_requested"/>
         <result property="createTime" column="created_at"/>
         <result property="updateTime" column="updated_at"/>
@@ -30,6 +31,6 @@
     <sql id="Base_Column_List">
         id,task_no,user_id,space_id,biz_type,input_file_key,output_file_key,
         status,progress,scale,model_name,model_version,retry_count,max_retry,error_code,error_msg,
-        trace_id,cancel_requested,created_at,updated_at
+        trace_id,video_options_json,cancel_requested,created_at,updated_at
     </sql>
 </mapper>

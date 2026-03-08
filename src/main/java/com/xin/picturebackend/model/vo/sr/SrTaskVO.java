@@ -22,9 +22,13 @@ public class SrTaskVO implements Serializable {
 
     private Long pictureId;
 
+    private String bizType;
+
     private String inputFileKey;
 
     private String outputFileKey;
+
+    private String videoOptionsJson;
 
     private String status;
 
@@ -62,4 +66,3 @@ public class SrTaskVO implements Serializable {
         return srTaskVO;
     }
 }
-

@@ -6,6 +6,7 @@ import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -21,6 +22,7 @@ import com.xin.picturebackend.model.entity.Space;
 import com.xin.picturebackend.model.entity.SpaceUser;
 import com.xin.picturebackend.model.entity.SrTask;
 import com.xin.picturebackend.model.entity.User;
+import com.xin.picturebackend.model.enums.SrBizTypeEnum;
 import com.xin.picturebackend.model.enums.SrTaskStatusEnum;
 import com.xin.picturebackend.model.enums.SpaceTypeEnum;
 import com.xin.picturebackend.model.messagequeue.sr.SrResultMessage;
@@ -90,12 +92,14 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
     @Transactional(rollbackFor = Exception.class)
     public Long createTask(SrTaskCreateRequest request, User loginUser) {
         ThrowUtils.throwIf(request == null || loginUser == null, ErrorCode.PARAMS_ERROR);
+        String bizType = resolveBizType(request.getType());
         Integer scale = ObjUtil.defaultIfNull(request.getScale(), 4);
         ThrowUtils.throwIf(scale != 2 && scale != 4, ErrorCode.PARAMS_ERROR, "scale 仅支持 2 或 4");
-        String modelName = StrUtil.blankToDefault(request.getModelName(), "RealESRGAN_x4plus");
+        String modelName = StrUtil.blankToDefault(request.getModelName(), defaultModelNameByType(bizType));
         String modelVersion = StrUtil.blankToDefault(request.getModelVersion(), "v1.0.0");
+        validateVideoOptions(bizType, request.getVideoOptions());
 
-        TaskSourceInfo taskSourceInfo = resolveTaskSource(request, loginUser);
+        TaskSourceInfo taskSourceInfo = resolveTaskSource(request, loginUser, bizType);
         String inputFileKey = taskSourceInfo.getInputFileKey();
         String taskNo = generateTaskNo();
         String traceId = "trace_" + UUID.fastUUID().toString(true);
@@ -104,7 +108,7 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         srTask.setTaskNo(taskNo);
         srTask.setUserId(loginUser.getId());
         srTask.setSpaceId(taskSourceInfo.getSpaceId());
-        srTask.setBizType("image");
+        srTask.setBizType(bizType);
         srTask.setInputFileKey(inputFileKey);
         srTask.setStatus(SrTaskStatusEnum.QUEUED.getValue());
         srTask.setProgress(0);
@@ -113,6 +117,9 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         srTask.setModelVersion(modelVersion);
         srTask.setAttempt(0);
         srTask.setTraceId(traceId);
+        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType) && request.getVideoOptions() != null) {
+            srTask.setVideoOptionsJson(JSONUtil.toJsonStr(request.getVideoOptions()));
+        }
         boolean saved = this.save(srTask);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建超分任务失败");
 
@@ -123,13 +130,22 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         taskMessage.setTaskId(srTask.getId());
         taskMessage.setTaskNo(taskNo);
         taskMessage.setUserId(loginUser.getId());
-        taskMessage.setType("image");
+        taskMessage.setType(bizType);
         taskMessage.setInputFileKey(inputFileKey);
         taskMessage.setScale(scale);
         taskMessage.setModelName(modelName);
         taskMessage.setModelVersion(modelVersion);
         taskMessage.setAttempt(1);
         taskMessage.setTraceId(traceId);
+        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType)) {
+            SrTaskMessage.VideoOptions videoOptions = new SrTaskMessage.VideoOptions();
+            videoOptions.setKeepAudio(request.getVideoOptions() == null || request.getVideoOptions().getKeepAudio() == null
+                    ? true : request.getVideoOptions().getKeepAudio());
+            videoOptions.setExtractFrameFirst(request.getVideoOptions() == null || request.getVideoOptions().getExtractFrameFirst() == null
+                    ? true : request.getVideoOptions().getExtractFrameFirst());
+            videoOptions.setFpsOverride(request.getVideoOptions() == null ? null : request.getVideoOptions().getFpsOverride());
+            taskMessage.setVideoOptions(videoOptions);
+        }
 
         try {
             rabbitTemplate.convertAndSend(
@@ -274,7 +290,20 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         }
     }
 
-    private TaskSourceInfo resolveTaskSource(SrTaskCreateRequest request, User loginUser) {
+    private TaskSourceInfo resolveTaskSource(SrTaskCreateRequest request, User loginUser, String bizType) {
+        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType)) {
+            if (StrUtil.isNotBlank(request.getInputFileKey())) {
+                return new TaskSourceInfo(request.getInputFileKey(), null);
+            }
+            Long pictureId = request.getPictureId();
+            ThrowUtils.throwIf(pictureId == null || pictureId <= 0, ErrorCode.PARAMS_ERROR, "video 任务必须传 inputFileKey 或 pictureId");
+            Picture picture = pictureService.getById(pictureId);
+            ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "资源不存在");
+            checkPictureAccess(picture, loginUser);
+            ThrowUtils.throwIf(StrUtil.isBlank(picture.getUrl()), ErrorCode.PARAMS_ERROR, "资源 url 为空");
+            String inputFileKey = COSKeyUtils.cosKeyHandler(picture.getUrl(), cosClientHost);
+            return new TaskSourceInfo(inputFileKey, picture.getSpaceId());
+        }
         if (StrUtil.isNotBlank(request.getInputFileKey())) {
             return new TaskSourceInfo(request.getInputFileKey(), null);
         }
@@ -302,6 +331,30 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
                 .eq(SpaceUser::getUserId, loginUser.getId())
                 .one();
         ThrowUtils.throwIf(spaceUser == null, ErrorCode.NO_AUTH_ERROR);
+    }
+
+    private String resolveBizType(String type) {
+        if (StrUtil.isBlank(type)) {
+            return SrBizTypeEnum.IMAGE.getValue();
+        }
+        SrBizTypeEnum bizTypeEnum = SrBizTypeEnum.getByValue(type);
+        ThrowUtils.throwIf(bizTypeEnum == null, ErrorCode.PARAMS_ERROR, "type 仅支持 image 或 video");
+        return bizTypeEnum.getValue();
+    }
+
+    private void validateVideoOptions(String bizType, SrTaskCreateRequest.VideoOptions videoOptions) {
+        if (!SrBizTypeEnum.VIDEO.getValue().equals(bizType) || videoOptions == null) {
+            return;
+        }
+        Double fpsOverride = videoOptions.getFpsOverride();
+        ThrowUtils.throwIf(fpsOverride != null && fpsOverride <= 0, ErrorCode.PARAMS_ERROR, "fpsOverride 必须 > 0");
+    }
+
+    private String defaultModelNameByType(String bizType) {
+        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType)) {
+            return "realesr-animevideov3";
+        }
+        return "RealESRGAN_x4plus";
     }
 
     private String generateTaskNo() {

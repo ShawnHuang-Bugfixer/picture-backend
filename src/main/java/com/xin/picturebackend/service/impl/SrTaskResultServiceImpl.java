@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrTaskResult> implements SrTaskResultService {
 
-    private static final Set<String> SUPPORTED_BIZ_TYPE = Set.of("image");
+    private static final Set<String> SUPPORTED_BIZ_TYPE = Set.of("image", "video");
     private static final Set<String> SUPPORTED_TEAM_ROLES = Set.of("viewer", "editor", "admin");
 
     @Value("${cos.client.host}")
@@ -60,14 +60,15 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
     public Page<SrTaskResultVO> listMyResultByPage(SrTaskResultQueryRequest request, User loginUser) {
         ThrowUtils.throwIf(request == null || loginUser == null, ErrorCode.PARAMS_ERROR);
         validatePageParams(request.getCurrent(), request.getPageSize(), request.getStartTime(), request.getEndTime());
+        String bizType = StrUtil.isBlank(request.getBizType()) ? null : request.getBizType().toLowerCase(Locale.ROOT);
         if (StrUtil.isNotBlank(request.getBizType())) {
-            ThrowUtils.throwIf(!SUPPORTED_BIZ_TYPE.contains(request.getBizType()), ErrorCode.PARAMS_ERROR, "当前仅支持 image");
+            ThrowUtils.throwIf(!SUPPORTED_BIZ_TYPE.contains(bizType), ErrorCode.PARAMS_ERROR, "bizType 仅支持 image 或 video");
         }
 
         QueryWrapper<SrTaskResult> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("user_id", loginUser.getId());
         queryWrapper.like(StrUtil.isNotBlank(request.getTaskNo()), "task_no", request.getTaskNo());
-        queryWrapper.eq(StrUtil.isNotBlank(request.getBizType()), "biz_type", request.getBizType());
+        queryWrapper.eq(StrUtil.isNotBlank(bizType), "biz_type", bizType);
         queryWrapper.eq(StrUtil.isNotBlank(request.getModelName()), "model_name", request.getModelName());
         queryWrapper.ge(request.getStartTime() != null, "created_at", request.getStartTime());
         queryWrapper.le(request.getEndTime() != null, "created_at", request.getEndTime());
@@ -86,10 +87,14 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
         ThrowUtils.throwIf(request.getSpaceId() == null || request.getSpaceId() <= 0, ErrorCode.PARAMS_ERROR, "spaceId 非法");
         validatePageParams(request.getCurrent(), request.getPageSize(), request.getStartTime(), request.getEndTime());
         checkTeamSpaceViewAuth(request.getSpaceId(), loginUser);
+        String bizType = StrUtil.isBlank(request.getBizType()) ? null : request.getBizType().toLowerCase(Locale.ROOT);
+        if (StrUtil.isNotBlank(request.getBizType())) {
+            ThrowUtils.throwIf(!SUPPORTED_BIZ_TYPE.contains(bizType), ErrorCode.PARAMS_ERROR, "bizType 仅支持 image 或 video");
+        }
 
         QueryWrapper<SrTaskResult> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("space_id", request.getSpaceId());
-        queryWrapper.eq("biz_type", "image");
+        queryWrapper.eq(StrUtil.isNotBlank(bizType), "biz_type", bizType);
         queryWrapper.like(StrUtil.isNotBlank(request.getTaskNo()), "task_no", request.getTaskNo());
         queryWrapper.eq(StrUtil.isNotBlank(request.getModelName()), "model_name", request.getModelName());
         queryWrapper.ge(request.getStartTime() != null, "created_at", request.getStartTime());
@@ -148,9 +153,17 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
         result.setModelVersion(srTask.getModelVersion());
         result.setOutputFileKey(resultMessage.getOutputFileKey());
         result.setOutputFormat(resolveOutputFormat(resultMessage.getOutputFileKey()));
+        result.setOutputSize(resultMessage.getOutputSize());
+        result.setOutputWidth(resultMessage.getOutputWidth());
+        result.setOutputHeight(resultMessage.getOutputHeight());
+        result.setDurationMs(resultMessage.getDurationMs());
+        result.setFps(resultMessage.getFps());
+        result.setBitrateKbps(resultMessage.getBitrateKbps());
+        result.setCodec(resultMessage.getCodec());
         result.setCostMs(ObjUtil.defaultIfNull(resultMessage.getCostMs(), 0L));
         result.setAttempt(ObjUtil.defaultIfNull(resultMessage.getAttempt(), 1));
         result.setTraceId(StrUtil.blankToDefault(resultMessage.getTraceId(), srTask.getTraceId()));
+        result.setExtraJson(resultMessage.getExtraJson());
         return result;
     }
 

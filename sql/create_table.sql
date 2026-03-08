@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS sr_task_result
     task_no         VARCHAR(64)                        NOT NULL COMMENT '任务号',
     user_id         BIGINT                             NOT NULL COMMENT '创建用户ID',
     space_id        BIGINT                             NULL COMMENT '空间ID（团队空间结果会写入）',
-    biz_type        VARCHAR(16)                        NOT NULL COMMENT '业务类型（当前仅 image，预留 video）',
+    biz_type        VARCHAR(16)                        NOT NULL COMMENT '业务类型（image / video）',
     model_name      VARCHAR(64)                        NULL COMMENT '模型名称',
     model_version   VARCHAR(32)                        NULL COMMENT '模型版本',
     output_file_key VARCHAR(512)                       NOT NULL COMMENT '输出文件 COS key',
@@ -219,6 +219,10 @@ CREATE TABLE IF NOT EXISTS sr_task_result
     KEY idx_biz_created (biz_type, created_at DESC),
     KEY idx_trace_id (trace_id)
 ) COMMENT ='超分结果表' collate = utf8mb4_unicode_ci;
+
+ALTER TABLE sr_task
+    MODIFY COLUMN biz_type VARCHAR(16) NOT NULL COMMENT '业务类型（image / video）',
+    ADD COLUMN video_options_json JSON NULL COMMENT '视频任务参数（videoOptions）' AFTER trace_id;
 
 
 

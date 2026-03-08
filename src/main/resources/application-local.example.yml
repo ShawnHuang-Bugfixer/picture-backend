@@ -1,0 +1,43 @@
+# 对象存储配置（请替换为自己的腾讯云参数）
+cos:
+  client:
+    host: https://resourses.collabimage.afishingcat.xin
+    secretId: REDACTED_SECRET_ID
+    secretKey: REDACTED_SECRET_KEY
+    region: ap-chengdu
+    bucket: huang-picture-1345225028
+
+# 阿里云 AI
+aliYunAi:
+  apiKey: REDACTED_ALIYUN_KEY
+
+# Pixabay API
+pixabay:
+  apiKey: REDACTED_PIXABAY_KEY
+
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: REDACTED_RABBITMQ_PASSWORD
+    virtual-host: /
+    template:
+      exchange: x.message.direct
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 3
+        prefetch: 1
+        acknowledge-mode: auto
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/picture
+    username: root
+    password: REDACTED_DB_PASSWORD
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 3000ms
+    password: REDACTED_REDIS_PASSWORD
