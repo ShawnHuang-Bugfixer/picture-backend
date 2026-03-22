@@ -42,6 +42,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.annotation.Resource;
 import java.time.Duration;
@@ -57,6 +59,8 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> implements SrTaskService {
+
+    private static final String LOCKED_MODEL_NAME = "RealESRGAN_x4plus";
 
     private static final Set<String> FINAL_STATUS = Set.of(
             SrTaskStatusEnum.SUCCEEDED.getValue(),
@@ -95,9 +99,10 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         String bizType = resolveBizType(request.getType());
         Integer scale = ObjUtil.defaultIfNull(request.getScale(), 4);
         ThrowUtils.throwIf(scale != 2 && scale != 4, ErrorCode.PARAMS_ERROR, "scale 仅支持 2 或 4");
-        String modelName = StrUtil.blankToDefault(request.getModelName(), defaultModelNameByType(bizType));
+        String modelName = resolveModelName(request.getModelName());
         String modelVersion = StrUtil.blankToDefault(request.getModelVersion(), "v1.0.0");
         validateVideoOptions(bizType, request.getVideoOptions());
+        SrTaskMessage.VideoOptions messageVideoOptions = buildMessageVideoOptions(bizType, request.getVideoOptions());
 
         TaskSourceInfo taskSourceInfo = resolveTaskSource(request, loginUser, bizType);
         String inputFileKey = taskSourceInfo.getInputFileKey();
@@ -117,8 +122,8 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         srTask.setModelVersion(modelVersion);
         srTask.setAttempt(0);
         srTask.setTraceId(traceId);
-        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType) && request.getVideoOptions() != null) {
-            srTask.setVideoOptionsJson(JSONUtil.toJsonStr(request.getVideoOptions()));
+        if (messageVideoOptions != null) {
+            srTask.setVideoOptionsJson(JSONUtil.toJsonStr(messageVideoOptions));
         }
         boolean saved = this.save(srTask);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "创建超分任务失败");
@@ -137,30 +142,11 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         taskMessage.setModelVersion(modelVersion);
         taskMessage.setAttempt(1);
         taskMessage.setTraceId(traceId);
-        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType)) {
-            SrTaskMessage.VideoOptions videoOptions = new SrTaskMessage.VideoOptions();
-            videoOptions.setKeepAudio(request.getVideoOptions() == null || request.getVideoOptions().getKeepAudio() == null
-                    ? true : request.getVideoOptions().getKeepAudio());
-            videoOptions.setExtractFrameFirst(request.getVideoOptions() == null || request.getVideoOptions().getExtractFrameFirst() == null
-                    ? true : request.getVideoOptions().getExtractFrameFirst());
-            videoOptions.setFpsOverride(request.getVideoOptions() == null ? null : request.getVideoOptions().getFpsOverride());
-            taskMessage.setVideoOptions(videoOptions);
+        if (messageVideoOptions != null) {
+            taskMessage.setVideoOptions(messageVideoOptions);
         }
 
-        try {
-            rabbitTemplate.convertAndSend(
-                    MQConstants.SR_TASK_EXCHANGE,
-                    MQConstants.SR_TASK_ROUTING_KEY,
-                    taskMessage,
-                    message -> {
-                        message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-                        return message;
-                    }
-            );
-        } catch (Exception e) {
-            log.error("发送超分任务消息失败, taskId={}", srTask.getId(), e);
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "发送超分任务消息失败");
-        }
+        publishTaskMessageAfterCommit(srTask.getId(), taskMessage);
         return srTask.getId();
     }
 
@@ -350,11 +336,55 @@ public class SrTaskServiceImpl extends ServiceImpl<SrTaskMapper, SrTask> impleme
         ThrowUtils.throwIf(fpsOverride != null && fpsOverride <= 0, ErrorCode.PARAMS_ERROR, "fpsOverride 必须 > 0");
     }
 
-    private String defaultModelNameByType(String bizType) {
-        if (SrBizTypeEnum.VIDEO.getValue().equals(bizType)) {
-            return "realesr-animevideov3";
+    private SrTaskMessage.VideoOptions buildMessageVideoOptions(String bizType, SrTaskCreateRequest.VideoOptions requestVideoOptions) {
+        if (!SrBizTypeEnum.VIDEO.getValue().equals(bizType) || requestVideoOptions == null) {
+            return null;
         }
-        return "RealESRGAN_x4plus";
+        SrTaskMessage.VideoOptions videoOptions = new SrTaskMessage.VideoOptions();
+        videoOptions.setKeepAudio(ObjUtil.defaultIfNull(requestVideoOptions.getKeepAudio(), true));
+        videoOptions.setExtractFrameFirst(requestVideoOptions.getExtractFrameFirst());
+        videoOptions.setFpsOverride(requestVideoOptions.getFpsOverride());
+        return videoOptions;
+    }
+
+    private String resolveModelName(String requestedModelName) {
+        if (StrUtil.isBlank(requestedModelName)) {
+            return LOCKED_MODEL_NAME;
+        }
+        if (!StrUtil.equals(requestedModelName, LOCKED_MODEL_NAME)) {
+            log.warn("超分服务当前固定使用模型 {}, 忽略请求模型 {}", LOCKED_MODEL_NAME, requestedModelName);
+        }
+        return LOCKED_MODEL_NAME;
+    }
+
+    private void publishTaskMessageAfterCommit(Long taskId, SrTaskMessage taskMessage) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            doPublishTaskMessage(taskId, taskMessage);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                doPublishTaskMessage(taskId, taskMessage);
+            }
+        });
+    }
+
+    private void doPublishTaskMessage(Long taskId, SrTaskMessage taskMessage) {
+        try {
+            rabbitTemplate.convertAndSend(
+                    MQConstants.SR_TASK_EXCHANGE,
+                    MQConstants.SR_TASK_ROUTING_KEY,
+                    taskMessage,
+                    message -> {
+                        message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+                        return message;
+                    }
+            );
+        } catch (Exception e) {
+            log.error("发送超分任务消息失败, taskId={}", taskId, e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "发送超分任务消息失败");
+        }
     }
 
     private String generateTaskNo() {
