@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xin.picturebackend.exception.ErrorCode;
 import com.xin.picturebackend.exception.ThrowUtils;
+import com.xin.picturebackend.mapper.SrTaskMapper;
 import com.xin.picturebackend.mapper.SrTaskResultMapper;
 import com.xin.picturebackend.model.dto.sr.SrTaskResultQueryRequest;
 import com.xin.picturebackend.model.dto.sr.SrTaskSpaceResultQueryRequest;
@@ -31,7 +32,9 @@ import javax.annotation.Resource;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -56,6 +59,9 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
     @Resource
     private UserService userService;
 
+    @Resource
+    private SrTaskMapper srTaskMapper;
+
     @Override
     public Page<SrTaskResultVO> listMyResultByPage(SrTaskResultQueryRequest request, User loginUser) {
         ThrowUtils.throwIf(request == null || loginUser == null, ErrorCode.PARAMS_ERROR);
@@ -75,10 +81,7 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
         queryWrapper.orderByDesc("created_at");
 
         Page<SrTaskResult> taskResultPage = this.page(new Page<>(request.getCurrent(), request.getPageSize()), queryWrapper);
-        Page<SrTaskResultVO> resultPage = new Page<>(taskResultPage.getCurrent(), taskResultPage.getSize(), taskResultPage.getTotal());
-        List<SrTaskResultVO> records = taskResultPage.getRecords().stream().map(this::toVoWithOutputUrl).collect(Collectors.toList());
-        resultPage.setRecords(records);
-        return resultPage;
+        return buildResultPage(taskResultPage);
     }
 
     @Override
@@ -102,10 +105,31 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
         queryWrapper.orderByDesc("created_at");
 
         Page<SrTaskResult> taskResultPage = this.page(new Page<>(request.getCurrent(), request.getPageSize()), queryWrapper);
+        return buildResultPage(taskResultPage);
+    }
+
+    private Page<SrTaskResultVO> buildResultPage(Page<SrTaskResult> taskResultPage) {
         Page<SrTaskResultVO> resultPage = new Page<>(taskResultPage.getCurrent(), taskResultPage.getSize(), taskResultPage.getTotal());
-        List<SrTaskResultVO> records = taskResultPage.getRecords().stream().map(this::toVoWithOutputUrl).collect(Collectors.toList());
+        Map<Long, SrTask> taskMap = getTaskMap(taskResultPage.getRecords());
+        List<SrTaskResultVO> records = taskResultPage.getRecords().stream()
+                .map(taskResult -> toVo(taskResult, taskMap.get(taskResult.getTaskId())))
+                .collect(Collectors.toList());
         resultPage.setRecords(records);
         return resultPage;
+    }
+
+    private Map<Long, SrTask> getTaskMap(List<SrTaskResult> taskResults) {
+        List<Long> taskIdList = taskResults.stream()
+                .map(SrTaskResult::getTaskId)
+                .filter(ObjUtil::isNotNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (taskIdList.isEmpty()) {
+            return Map.of();
+        }
+        return srTaskMapper.selectBatchIds(taskIdList).stream()
+                .filter(ObjUtil::isNotNull)
+                .collect(Collectors.toMap(SrTask::getId, Function.identity(), (left, right) -> left));
     }
 
     @Override
@@ -203,27 +227,31 @@ public class SrTaskResultServiceImpl extends ServiceImpl<SrTaskResultMapper, SrT
         ThrowUtils.throwIf(!SUPPORTED_TEAM_ROLES.contains(spaceUser.getSpaceRole()), ErrorCode.NO_AUTH_ERROR, "团队角色无查看权限");
     }
 
-    private SrTaskResultVO toVoWithOutputUrl(SrTaskResult taskResult) {
+    private SrTaskResultVO toVo(SrTaskResult taskResult, SrTask srTask) {
         SrTaskResultVO vo = SrTaskResultVO.objToVo(taskResult);
-        if (vo == null || StrUtil.isBlank(vo.getOutputFileKey())) {
+        if (vo == null) {
             return vo;
+        }
+        if (srTask != null) {
+            vo.setInputFileKey(srTask.getInputFileKey());
+            vo.setInputFileUrl(buildCosUrl(srTask.getInputFileKey()));
         }
         vo.setOutputUrl(buildCosUrl(vo.getOutputFileKey()));
         return vo;
     }
 
-    private String buildCosUrl(String outputFileKey) {
-        if (StrUtil.isBlank(outputFileKey)) {
+    private String buildCosUrl(String fileKey) {
+        if (StrUtil.isBlank(fileKey)) {
             return null;
         }
-        if (outputFileKey.startsWith("http://") || outputFileKey.startsWith("https://")) {
-            return outputFileKey;
+        if (fileKey.startsWith("http://") || fileKey.startsWith("https://")) {
+            return fileKey;
         }
         if (StrUtil.isBlank(cosClientHost)) {
-            return outputFileKey;
+            return fileKey;
         }
         String host = StrUtil.removeSuffix(cosClientHost, "/");
-        String key = StrUtil.removePrefix(outputFileKey, "/");
+        String key = StrUtil.removePrefix(fileKey, "/");
         return host + "/" + key;
     }
 }
