@@ -31,6 +31,10 @@ public class SrTaskResultVO implements Serializable {
 
     private String modelVersion;
 
+    private String inputFileKey;
+
+    private String inputFileUrl;
+
     private String outputFileKey;
 
     private String outputUrl;

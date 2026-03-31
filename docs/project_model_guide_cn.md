@@ -1,4 +1,4 @@
-﻿# Real-ESRGAN 项目模型清单（含说明）
+# Real-ESRGAN 项目模型清单（含说明）
 
 本文汇总当前仓库中的模型，并说明适用场景、推理入口支持情况及本地权重现状。
 
@@ -103,7 +103,7 @@
 1. 通用照片优先：`RealESRGAN_x4plus`
 2. 只需 x2 放大：`RealESRGAN_x2plus`
 3. 动漫图像优先：`RealESRGAN_x4plus_anime_6B`
-4. 动漫视频优先：`realesr-animevideov3`
+4. 视频修复默认优先：`RealESRGAN_x4plus`
 5. 资源受限（显存/时延敏感）：`realesr-general-x4v3`
 
 ## 6. 配置示例（python_sr_service）

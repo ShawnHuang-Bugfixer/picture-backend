@@ -45,7 +45,7 @@
   "type": "video",
   "inputFileKey": "input/video/2026/03/demo.mp4",
   "scale": 2,
-  "modelName": "realesr-animevideov3",
+  "modelName": "RealESRGAN_x4plus",
   "modelVersion": "v1.0.0",
   "attempt": 1,
   "traceId": "trace_3fd9b4ce18e0455e8d64f8a9e6a7d1b2",
